@@ -29,7 +29,7 @@
                   ? 'border-primary-500 text-primary-700 dark:border-primary-400 dark:text-primary-300'
                   : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700',
               ]"
-              @click="themeStore.setTheme(theme.id)"
+              @click="selectTheme(theme.id)"
             >
               {{ theme.name }}
             </button>
@@ -39,7 +39,7 @@
         <div class="flex items-center">
           <switch-component
             :model-value="themeStore.darkMode"
-            @update:model-value="themeStore.toggleDarkMode"
+            @update:model-value="toggleDarkMode"
             class="mr-3"
           />
           <span class="text-sm text-gray-700 dark:text-gray-300">深色模式</span>
@@ -161,6 +161,9 @@ const themeStore = useThemeStore();
 // 保存初始主题设置，用于检测变更
 const initialTheme = ref(themeStore.currentTheme);
 const initialDarkMode = ref(themeStore.darkMode);
+// 添加工作副本以跟踪当前会话中的变更
+const currentTheme = ref(themeStore.currentTheme);
+const currentDarkMode = ref(themeStore.darkMode);
 
 // 用户个人设置
 const name = ref(authStore.currentUser?.name || "");
@@ -173,7 +176,20 @@ onMounted(() => {
   // 在组件挂载时记录初始主题设置
   initialTheme.value = themeStore.currentTheme;
   initialDarkMode.value = themeStore.darkMode;
+  currentTheme.value = themeStore.currentTheme;
+  currentDarkMode.value = themeStore.darkMode;
 });
+
+// 添加主题选择和深色模式切换功能
+const selectTheme = (themeId) => {
+  currentTheme.value = themeId;
+  themeStore.setTheme(themeId);
+};
+
+const toggleDarkMode = () => {
+  themeStore.toggleDarkMode();
+  currentDarkMode.value = themeStore.darkMode;
+};
 
 const saveSettings = async () => {
   try {
@@ -230,12 +246,20 @@ const saveSettings = async () => {
     }
     
     // 检测主题设置是否有变更
-    if (initialTheme.value !== themeStore.currentTheme || 
-        initialDarkMode.value !== themeStore.darkMode) {
+    if (initialTheme.value !== currentTheme.value || 
+        initialDarkMode.value !== currentDarkMode.value) {
       hasChanges = true;
-      // 更新初始值，以便下次检测
-      initialTheme.value = themeStore.currentTheme;
-      initialDarkMode.value = themeStore.darkMode;
+      
+      try {
+        // 主题设置保存到数据库
+        await themeStore.saveThemeSettingsToDatabase();
+        
+        // 更新初始值，以便下次检测
+        initialTheme.value = currentTheme.value;
+        initialDarkMode.value = currentDarkMode.value;
+      } catch (error) {
+        console.error("保存主题设置失败:", error);
+      }
     }
     
     setTimeout(() => {

@@ -279,6 +279,8 @@ async function initializeDatabase() {
           password TEXT NOT NULL,
           name TEXT NOT NULL,
           role TEXT NOT NULL,
+          theme TEXT DEFAULT '',
+          darkMode INTEGER DEFAULT 0,
           createdAt TEXT DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -290,9 +292,47 @@ async function initializeDatabase() {
           password TEXT NOT NULL,
           name TEXT NOT NULL,
           role TEXT NOT NULL,
+          theme TEXT DEFAULT '',
+          darkMode INTEGER DEFAULT 0,
           createdAt TEXT DEFAULT CURRENT_TIMESTAMP
         )
       `);
+    }
+
+    // 确保users表有theme和darkMode字段（SQLite不支持ALTER TABLE ADD COLUMN IF NOT EXISTS）
+    // 所以我们需要检查字段是否存在，如果不存在则重新创建表
+    let hasThemeField = false;
+    let hasDarkModeField = false;
+
+    try {
+      // 获取表结构
+      const tableInfo = db.prepare("PRAGMA table_info(users)").all();
+
+      // 检查主题相关字段是否存在
+      for (const column of tableInfo) {
+        if (column.name === "theme") hasThemeField = true;
+        if (column.name === "darkMode") hasDarkModeField = true;
+      }
+
+      console.log(
+        "用户表字段检查 - theme字段:",
+        hasThemeField,
+        "darkMode字段:",
+        hasDarkModeField
+      );
+
+      // 如果缺少主题相关字段，则添加这些字段
+      if (!hasThemeField) {
+        console.log("添加theme字段到users表");
+        db.exec("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT ''");
+      }
+
+      if (!hasDarkModeField) {
+        console.log("添加darkMode字段到users表");
+        db.exec("ALTER TABLE users ADD COLUMN darkMode INTEGER DEFAULT 0");
+      }
+    } catch (error) {
+      console.error("检查或更新users表结构时出错:", error);
     }
 
     // Insert a default admin user if none exists
@@ -358,6 +398,9 @@ app.post("/api/auth/login", (req, res) => {
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
+    // 将darkMode从整数转换为布尔值
+    userWithoutPassword.darkMode = userWithoutPassword.darkMode === 1;
+
     res.json({
       user: userWithoutPassword,
       token: "demo-token-" + Date.now(), // In a real app, use JWT
@@ -372,12 +415,17 @@ app.get("/api/auth/user", (req, res) => {
   // For this demo, we'll just return the admin user
   try {
     const user = db
-      .prepare("SELECT id, username, name, role FROM users WHERE username = ?")
+      .prepare(
+        "SELECT id, username, name, role, theme, darkMode FROM users WHERE username = ?"
+      )
       .get("admin");
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+
+    // 将darkMode从整数转换为布尔值
+    user.darkMode = user.darkMode === 1;
 
     res.json(user);
   } catch (error) {
@@ -405,12 +453,55 @@ app.put("/api/auth/profile", (req, res) => {
 
     // 获取更新后的用户信息
     const updatedUser = db
-      .prepare("SELECT id, username, name, role FROM users WHERE id = ?")
+      .prepare(
+        "SELECT id, username, name, role, theme, darkMode FROM users WHERE id = ?"
+      )
       .get(id);
 
     res.json({
       success: true,
       message: "用户资料已更新",
+      user: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 添加更新用户主题设置的API端点
+app.put("/api/auth/theme-settings", (req, res) => {
+  try {
+    const { theme, darkMode, userId } = req.body;
+
+    // 在实际应用中，我们会从JWT token中获取用户ID
+    // 这里简化处理，允许通过请求体传入userId，或者默认使用admin用户
+    const id = userId || 1; // 默认使用ID为1的用户(admin)
+
+    // 将darkMode转换为整数存储
+    const darkModeValue = darkMode ? 1 : 0;
+
+    // 更新用户主题设置
+    const result = db
+      .prepare("UPDATE users SET theme = ?, darkMode = ? WHERE id = ?")
+      .run(theme, darkModeValue, id);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: "用户不存在或没有变化" });
+    }
+
+    // 获取更新后的用户信息
+    const updatedUser = db
+      .prepare(
+        "SELECT id, username, name, role, theme, darkMode FROM users WHERE id = ?"
+      )
+      .get(id);
+
+    // 将darkMode从整数转换回布尔值
+    updatedUser.darkMode = updatedUser.darkMode === 1;
+
+    res.json({
+      success: true,
+      message: "主题设置已更新",
       user: updatedUser,
     });
   } catch (error) {
