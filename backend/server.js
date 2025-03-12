@@ -121,6 +121,7 @@ const upload = multer({ storage: storage });
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "localhost";
 
 // Middleware
 app.use(cors());
@@ -1102,9 +1103,24 @@ app.get("/api/statistics", (req, res) => {
   }
 });
 
+// 在所有API路由之后，提供前端静态文件
+// 仅在生产环境中启用
+if (process.env.NODE_ENV === "production") {
+  const staticPath = path.join(__dirname, "../dist");
+  console.log(`提供静态文件，路径: ${staticPath}`);
+
+  // 使用express.static中间件提供静态文件
+  app.use(express.static(staticPath));
+
+  // 所有未匹配的路由返回index.html (处理SPA路由)
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(staticPath, "index.html"));
+  });
+}
+
 // Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });
 
 // Check if running with --init-only flag

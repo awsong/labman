@@ -50,6 +50,7 @@ const upload = multer({ storage: storage });
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "localhost";
 
 // Middleware
 app.use(cors());
@@ -177,8 +178,8 @@ app.post("/api/projects", (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
-  console.log(`Memory server running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Memory server running on http://${HOST}:${PORT}`);
 });
 
 // Check if running with --init-only flag
