@@ -36,50 +36,57 @@
               <moon-icon v-else class="h-5 w-5" aria-hidden="true" />
             </button>
 
-            <div class="relative ml-3">
-              <div>
-                <button
-                  type="button"
-                  class="flex items-center rounded-full bg-white dark:bg-gray-800 focus:outline-none"
-                  @click="toggleUserMenu"
-                >
-                  <img
-                    class="h-8 w-8 rounded-full"
-                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=admin"
-                    alt="User avatar"
-                  />
-                  <span
-                    class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >{{ authStore.currentUser?.name }}</span
-                  >
-                  <chevron-down-icon
-                    class="ml-1 h-4 w-4 text-gray-400"
-                    aria-hidden="true"
-                  />
-                </button>
-              </div>
-              <div
-                v-if="showUserMenu"
-                class="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-700"
+            <div class="relative ml-3" ref="userMenuContainer">
+              <button
+                type="button"
+                class="flex items-center rounded-full bg-white dark:bg-gray-800 focus:outline-none"
+                @click.stop="toggleUserMenu"
+                ref="userMenuButton"
               >
-                <a
-                  href="#"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
-                  @click.prevent="logout"
+                <img
+                  class="h-8 w-8 rounded-full"
+                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=admin"
+                  alt="User avatar"
+                />
+                <span
+                  class="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >{{ authStore.currentUser?.name }}</span
                 >
-                  退出登录
-                </a>
-              </div>
+                <chevron-down-icon
+                  class="ml-1 h-4 w-4 text-gray-400"
+                  aria-hidden="true"
+                />
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
   </header>
+
+  <teleport to="body">
+    <div
+      v-if="showUserMenu && buttonPosition"
+      class="fixed z-50 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-700 animate-dropdown"
+      :style="{
+        top: `${buttonPosition.top + buttonPosition.height}px`,
+        left: `${buttonPosition.left}px`,
+      }"
+      @click.stop
+    >
+      <a
+        href="#"
+        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+        @click.stop.prevent="logout"
+      >
+        退出登录
+      </a>
+    </div>
+  </teleport>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted, onBeforeUnmount, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { SunIcon, MoonIcon, ChevronDownIcon } from "@heroicons/vue/24/outline";
 import { useAuthStore } from "@/store/auth";
@@ -90,9 +97,22 @@ const authStore = useAuthStore();
 const themeStore = useThemeStore();
 
 const showUserMenu = ref(false);
+const userMenuButton = ref(null);
+const buttonPosition = ref(null);
 
-const toggleUserMenu = () => {
+const toggleUserMenu = async () => {
   showUserMenu.value = !showUserMenu.value;
+  
+  if (showUserMenu.value && userMenuButton.value) {
+    await nextTick();
+    const rect = userMenuButton.value.getBoundingClientRect();
+    buttonPosition.value = {
+      top: rect.top,
+      left: rect.left,
+      height: rect.height,
+      width: rect.width
+    };
+  }
 };
 
 const toggleDarkMode = () => {
@@ -105,13 +125,44 @@ const logout = () => {
   router.push("/login");
 };
 
-// Close menu when clicking outside
-const closeMenu = (e) => {
-  if (showUserMenu.value) {
+const handleGlobalClick = (event) => {
+  if (
+    showUserMenu.value && 
+    userMenuButton.value && 
+    !userMenuButton.value.contains(event.target) &&
+    !(event.target.closest('.fixed.z-50'))
+  ) {
     showUserMenu.value = false;
   }
 };
 
-// Add event listener to close menu when clicking outside
-document.addEventListener("click", closeMenu);
+onMounted(() => {
+  window.addEventListener("click", handleGlobalClick);
+  
+  router.beforeEach((to, from, next) => {
+    showUserMenu.value = false;
+    next();
+  });
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("click", handleGlobalClick);
+});
 </script>
+
+<style scoped>
+.animate-dropdown {
+  animation: dropIn 0.2s ease-out forwards;
+}
+
+@keyframes dropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

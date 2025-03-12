@@ -131,17 +131,18 @@
           <div
             v-if="
               !stats.projectsByType ||
-              Object.keys(stats.projectsByType).length === 0
+              Object.keys(stats.projectsByType || {}).length === 0 ||
+              !chartRenderable
             "
             class="text-gray-500 dark:text-gray-400 text-center py-4"
           >
             暂无项目类型数据
           </div>
-          <div v-else class="h-64">
-            <pie-chart
-              :chart-data="projectTypeChartData"
-              :options="chartOptions"
-            />
+          <div v-else class="h-64 chart-container">
+            <!-- 隐藏的占位符元素，用于在重新渲染时替换图表 -->
+            <div v-if="chartError" class="h-full flex items-center justify-center">
+              <p class="text-gray-500 dark:text-gray-400">加载图表时出错</p>
+            </div>
           </div>
         </div>
       </div>
@@ -257,7 +258,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import { useAuthStore } from "@/store/auth";
 import { useProjectStore } from "@/store/project";
 import { useMilestoneStore } from "@/store/milestone";
@@ -267,59 +268,23 @@ import {
   ClockIcon,
   FlagIcon,
 } from "@heroicons/vue/24/outline";
-import { Pie as PieChart } from "vue-chartjs";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, Title } from "chart.js";
-
-// Register required Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend, Title);
 
 const authStore = useAuthStore();
 const projectStore = useProjectStore();
 const milestoneStore = useMilestoneStore();
 
 const loading = ref(true);
-const stats = ref({});
-const upcomingMilestones = ref([]);
+const chartError = ref(false);
+const chartRenderable = ref(false);
 
-// Chart data and options
-const projectTypeChartData = computed(() => {
-  if (!stats.value.projectsByType) return { labels: [], datasets: [] };
-
-  const labels = Object.keys(stats.value.projectsByType);
-  const data = Object.values(stats.value.projectsByType);
-
-  // Generate colors based on the number of project types
-  const colors = labels.map((_, index) => {
-    const hue = (index * 137) % 360; // Use golden angle to distribute colors evenly
-    return `hsla(${hue}, 70%, 60%, 0.8)`;
-  });
-
-  return {
-    labels,
-    datasets: [
-      {
-        data,
-        backgroundColor: colors,
-        borderWidth: 1,
-      },
-    ],
-  };
+const stats = ref({
+  totalProjects: 0,
+  activeProjects: 0,
+  projectsByType: null,
+  projectsByYear: null,
+  projectsByTeam: null,
 });
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "bottom",
-      labels: {
-        color: document.documentElement.classList.contains("dark")
-          ? "#d1d5db"
-          : "#374151",
-      },
-    },
-  },
-};
+const upcomingMilestones = ref([]);
 
 // Computed for recent projects (max 3)
 const recentProjects = computed(() => {
@@ -405,10 +370,22 @@ onMounted(async () => {
       projectsByYear: projectStore.projectsByYear,
       projectsByTeam: projectStore.projectsByTeam,
     };
+    
+    // 延迟更新图表可渲染状态，避免页面初始化时出错
+    setTimeout(() => {
+      chartRenderable.value = true;
+    }, 1000);
   } catch (error) {
     console.error("Error loading dashboard data:", error);
+    chartError.value = true;
   } finally {
     loading.value = false;
   }
 });
 </script>
+
+<style scoped>
+.chart-container {
+  position: relative;
+}
+</style>
