@@ -17,11 +17,13 @@ LabMan 是一个基于 Web 的科研项目管理系统，帮助研究团队更�
 - **前端**: Vue.js 3, Tailwind CSS, Chart.js, Pinia
 - **后端**: Node.js, Express
 - **数据库**: SQLite (本地存储)
+- **版本控制**: Git
 
 ## 运行要求
 
 - Node.js 18+, 20+ LTS 版本推荐（注意：Node.js 23+ 可能需要使用备选安装方法）
 - npm 9+
+- Git (用于版本控制)
 
 ## 安装和启动
 
