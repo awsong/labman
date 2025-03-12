@@ -295,7 +295,7 @@
               @click="deleteProject"
               :disabled="deleting"
             >
-              <spinner-icon v-if="deleting" class="animate-spin h-5 w-5 mr-2" />
+              <arrow-path-icon v-if="deleting" class="animate-spin h-5 w-5 mr-2" />
               确认删除
             </button>
           </div>

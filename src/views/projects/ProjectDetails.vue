@@ -271,7 +271,7 @@
         </div>
 
         <div v-if="milestonesLoading" class="flex justify-center py-6">
-          <spinner-icon class="animate-spin h-6 w-6 text-primary-500" />
+          <arrow-path-icon class="animate-spin h-6 w-6 text-primary-500" />
         </div>
 
         <div
@@ -568,7 +568,7 @@
                 class="btn btn-primary"
                 :disabled="milestoneSaving"
               >
-                <spinner-icon
+                <arrow-path-icon
                   v-if="milestoneSaving"
                   class="animate-spin h-5 w-5 mr-2"
                 />
@@ -611,7 +611,7 @@
               class="btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
               :disabled="deletingMilestone"
             >
-              <spinner-icon
+              <arrow-path-icon
                 v-if="deletingMilestone"
                 class="animate-spin h-5 w-5 mr-2"
               />
