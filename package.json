@@ -1,0 +1,38 @@
+{
+  "name": "labman",
+  "version": "1.0.0",
+  "description": "Web-based research project management system",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node backend/server.js",
+    "memory-server": "node backend/memory-server.js",
+    "start": "concurrently \"npm run dev\" \"npm run server\"",
+    "start:memory": "concurrently \"npm run dev\" \"npm run memory-server\""
+  },
+  "dependencies": {
+    "@headlessui/vue": "^1.7.16",
+    "@heroicons/vue": "^2.1.1",
+    "axios": "^1.6.8",
+    "chart.js": "^4.4.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.1",
+    "multer": "^1.4.5-lts.1",
+    "pinia": "^2.1.7",
+    "sqlite3": "^5.1.7",
+    "vue": "^3.4.21",
+    "vue-chartjs": "^5.3.0",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.2.2"
+  }
+} 
