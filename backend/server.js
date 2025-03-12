@@ -385,6 +385,80 @@ app.get("/api/auth/user", (req, res) => {
   }
 });
 
+// 添加更新用户资料的API端点
+app.put("/api/auth/profile", (req, res) => {
+  try {
+    const { name, userId } = req.body;
+
+    // 在实际应用中，我们会从JWT token中获取用户ID
+    // 这里简化处理，允许通过请求体传入userId，或者默认使用admin用户
+    const id = userId || 1; // 默认使用ID为1的用户(admin)
+
+    // 更新用户资料
+    const result = db
+      .prepare("UPDATE users SET name = ? WHERE id = ?")
+      .run(name, id);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: "用户不存在或没有变化" });
+    }
+
+    // 获取更新后的用户信息
+    const updatedUser = db
+      .prepare("SELECT id, username, name, role FROM users WHERE id = ?")
+      .get(id);
+
+    res.json({
+      success: true,
+      message: "用户资料已更新",
+      user: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 添加更改密码的API端点
+app.put("/api/auth/password", (req, res) => {
+  try {
+    const { currentPassword, newPassword, userId } = req.body;
+
+    // 检查是否提供了新密码
+    if (!newPassword || newPassword.trim() === "") {
+      return res.status(400).json({ error: "新密码不能为空" });
+    }
+
+    // 在实际应用中，我们会从JWT token中获取用户ID
+    // 这里简化处理，允许通过请求体传入userId，或者默认使用admin用户
+    const id = userId || 1; // 默认使用ID为1的用户(admin)
+
+    // 验证当前密码
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "用户不存在" });
+    }
+
+    // 在实际应用中，应该使用bcrypt比较哈希密码
+    // 这里为了演示，使用简单比较
+    if (user.password !== currentPassword) {
+      return res.status(401).json({ error: "当前密码不正确" });
+    }
+
+    // 更新密码
+    const result = db
+      .prepare("UPDATE users SET password = ? WHERE id = ?")
+      .run(newPassword, id);
+
+    res.json({
+      success: true,
+      message: "密码已更新",
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Projects
 app.get("/api/projects", (req, res) => {
   try {

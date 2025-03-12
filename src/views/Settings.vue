@@ -149,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useAuthStore } from "@/store/auth";
 import { useThemeStore } from "@/store/theme";
 import { ArrowPathIcon } from "@heroicons/vue/24/outline";
@@ -158,27 +158,98 @@ import SwitchComponent from "@/components/ui/SwitchComponent.vue";
 const authStore = useAuthStore();
 const themeStore = useThemeStore();
 
+// 保存初始主题设置，用于检测变更
+const initialTheme = ref(themeStore.currentTheme);
+const initialDarkMode = ref(themeStore.darkMode);
+
+// 用户个人设置
 const name = ref(authStore.currentUser?.name || "");
 const currentPassword = ref("");
 const newPassword = ref("");
 const confirmPassword = ref("");
 const loading = ref(false);
 
-// This is a mock function since we don't have actual API for changing user details
-const saveSettings = () => {
-  loading.value = true;
+onMounted(() => {
+  // 在组件挂载时记录初始主题设置
+  initialTheme.value = themeStore.currentTheme;
+  initialDarkMode.value = themeStore.darkMode;
+});
 
-  // Simulate API call
-  setTimeout(() => {
-    // Reset password fields
-    currentPassword.value = "";
-    newPassword.value = "";
-    confirmPassword.value = "";
-
+const saveSettings = async () => {
+  try {
+    loading.value = true;
+    let hasChanges = false;
+    
+    // 如果用户尝试更改密码（只有在提供了新密码的情况下）
+    if (newPassword.value) {
+      // 确保填写了当前密码
+      if (!currentPassword.value) {
+        alert("请输入当前密码");
+        loading.value = false;
+        return;
+      }
+      
+      // 确保新密码和确认密码匹配
+      if (newPassword.value !== confirmPassword.value) {
+        alert("新密码和确认密码不匹配");
+        loading.value = false;
+        return;
+      }
+      
+      // 更改密码
+      const passwordResult = await authStore.changePassword(
+        currentPassword.value,
+        newPassword.value
+      );
+      
+      if (!passwordResult.success) {
+        alert(passwordResult.error || "密码更改失败");
+        loading.value = false;
+        return;
+      }
+      
+      hasChanges = true;
+      
+      // 重置密码表单
+      currentPassword.value = "";
+      newPassword.value = "";
+      confirmPassword.value = "";
+    }
+    
+    // 如果用户名已更改
+    if (name.value !== authStore.currentUser?.name) {
+      const profileResult = await authStore.updateUserProfile(name.value);
+      
+      if (!profileResult.success) {
+        alert(profileResult.error || "更新用户资料失败");
+        loading.value = false;
+        return;
+      }
+      
+      hasChanges = true;
+    }
+    
+    // 检测主题设置是否有变更
+    if (initialTheme.value !== themeStore.currentTheme || 
+        initialDarkMode.value !== themeStore.darkMode) {
+      hasChanges = true;
+      // 更新初始值，以便下次检测
+      initialTheme.value = themeStore.currentTheme;
+      initialDarkMode.value = themeStore.darkMode;
+    }
+    
+    setTimeout(() => {
+      loading.value = false;
+      
+      if (hasChanges) {
+        alert("设置已成功保存！");
+      } else {
+        alert("没有检测到设置更改。");
+      }
+    }, 600);
+  } catch (error) {
     loading.value = false;
-
-    // Show success message (in a real app)
-    alert("设置已保存！（演示功能，实际未保存）");
-  }, 1000);
+    alert("保存设置时出错: " + error.message);
+  }
 };
 </script>
