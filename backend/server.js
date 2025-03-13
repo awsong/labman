@@ -4,91 +4,7 @@ import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-
-// Try to import better-sqlite3, fall back to sqlite3 if not available
-let Database;
-let sqlite3Mode = false;
-
-try {
-  const betterSqlite3 = await import("better-sqlite3");
-  Database = betterSqlite3.default;
-  console.log("Using better-sqlite3");
-} catch (err) {
-  console.log(
-    "Failed to load better-sqlite3, falling back to sqlite3:",
-    err.message
-  );
-
-  try {
-    const sqlite3Module = await import("sqlite3");
-    const sqlite3 = sqlite3Module.default || sqlite3Module;
-    // Create a wrapper around sqlite3 to match better-sqlite3's API
-    sqlite3Mode = true;
-    Database = function (filename) {
-      const db = new sqlite3.Database(filename);
-
-      // Add synchronous exec method (simplified)
-      this.exec = function (sql) {
-        return new Promise((resolve, reject) => {
-          db.exec(sql, (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-      };
-
-      // Add prepare method to match better-sqlite3 API
-      this.prepare = function (sql) {
-        const stmt = db.prepare(sql);
-
-        return {
-          run: function (...params) {
-            return new Promise((resolve, reject) => {
-              stmt.run(params, function (err) {
-                if (err) reject(err);
-                else resolve({ lastInsertRowid: this.lastID });
-              });
-            });
-          },
-          get: function (...params) {
-            return new Promise((resolve, reject) => {
-              stmt.get(params, (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-              });
-            });
-          },
-          all: function (...params) {
-            return new Promise((resolve, reject) => {
-              stmt.all(params, (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-              });
-            });
-          },
-        };
-      };
-
-      // Add close method
-      this.close = function () {
-        return new Promise((resolve, reject) => {
-          db.close((err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-      };
-
-      return this;
-    };
-  } catch (sqlite3Err) {
-    console.error("Failed to load sqlite3 fallback:", sqlite3Err.message);
-    console.error(
-      "Please install either better-sqlite3 or sqlite3: npm install sqlite3"
-    );
-    process.exit(1);
-  }
-}
+import betterSqlite3 from "better-sqlite3";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -102,7 +18,7 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Initialize database
 const dbPath = path.join(__dirname, "labman.db");
-const db = new Database(dbPath);
+const db = new betterSqlite3(dbPath);
 
 // Configure file storage for uploads
 const storage = multer.diskStorage({
@@ -129,176 +45,89 @@ app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Database initialization
-async function initializeDatabase() {
+function initializeDatabase() {
   try {
     // Create projects table
-    if (sqlite3Mode) {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS projects (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          type TEXT NOT NULL,
-          organization TEXT NOT NULL,
-          leader TEXT NOT NULL,
-          contact TEXT,
-          teamAllocation TEXT,
-          collaborators TEXT,
-          startDate TEXT NOT NULL,
-          endDate TEXT NOT NULL,
-          summary TEXT,
-          kpis TEXT,
-          budget REAL,
-          taskDocument TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-    } else {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS projects (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          type TEXT NOT NULL,
-          organization TEXT NOT NULL,
-          leader TEXT NOT NULL,
-          contact TEXT,
-          teamAllocation TEXT,
-          collaborators TEXT,
-          startDate TEXT NOT NULL,
-          endDate TEXT NOT NULL,
-          summary TEXT,
-          kpis TEXT,
-          budget REAL,
-          taskDocument TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS projects (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        organization TEXT NOT NULL,
+        leader TEXT NOT NULL,
+        contact TEXT,
+        teamAllocation TEXT,
+        collaborators TEXT,
+        startDate TEXT NOT NULL,
+        endDate TEXT NOT NULL,
+        summary TEXT,
+        kpis TEXT,
+        budget REAL,
+        taskDocument TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     // Create milestones table
-    if (sqlite3Mode) {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS milestones (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          projectId INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          description TEXT,
-          type TEXT NOT NULL,
-          dueDate TEXT NOT NULL,
-          status TEXT NOT NULL,
-          completion REAL DEFAULT 0,
-          notes TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
-        )
-      `);
-    } else {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS milestones (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          projectId INTEGER NOT NULL,
-          title TEXT NOT NULL,
-          description TEXT,
-          type TEXT NOT NULL,
-          dueDate TEXT NOT NULL,
-          status TEXT NOT NULL,
-          completion REAL DEFAULT 0,
-          notes TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
-        )
-      `);
-    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS milestones (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projectId INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        type TEXT NOT NULL,
+        dueDate TEXT NOT NULL,
+        status TEXT NOT NULL,
+        completion REAL DEFAULT 0,
+        notes TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
+      )
+    `);
 
     // Create progress table
-    if (sqlite3Mode) {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS progress (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          projectId INTEGER NOT NULL,
-          kpiId TEXT NOT NULL,
-          kpiName TEXT NOT NULL,
-          target TEXT NOT NULL,
-          current TEXT,
-          status TEXT NOT NULL,
-          completion REAL DEFAULT 0,
-          notes TEXT,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
-        )
-      `);
-    } else {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS progress (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          projectId INTEGER NOT NULL,
-          kpiId TEXT NOT NULL,
-          kpiName TEXT NOT NULL,
-          target TEXT NOT NULL,
-          current TEXT,
-          status TEXT NOT NULL,
-          completion REAL DEFAULT 0,
-          notes TEXT,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
-        )
-      `);
-    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projectId INTEGER NOT NULL,
+        kpiId TEXT NOT NULL,
+        kpiName TEXT NOT NULL,
+        target TEXT NOT NULL,
+        current TEXT,
+        status TEXT NOT NULL,
+        completion REAL DEFAULT 0,
+        notes TEXT,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
+      )
+    `);
 
     // Create gantt table for gantt chart data
-    if (sqlite3Mode) {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS gantt (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          projectId INTEGER NOT NULL,
-          data TEXT NOT NULL,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
-        )
-      `);
-    } else {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS gantt (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          projectId INTEGER NOT NULL,
-          data TEXT NOT NULL,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
-        )
-      `);
-    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS gantt (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projectId INTEGER NOT NULL,
+        data TEXT NOT NULL,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
+      )
+    `);
 
     // Create users table for authentication
-    if (sqlite3Mode) {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL,
-          name TEXT NOT NULL,
-          role TEXT NOT NULL,
-          theme TEXT DEFAULT '',
-          darkMode INTEGER DEFAULT 0,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-    } else {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          username TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL,
-          name TEXT NOT NULL,
-          role TEXT NOT NULL,
-          theme TEXT DEFAULT '',
-          darkMode INTEGER DEFAULT 0,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-    }
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        theme TEXT DEFAULT '',
+        darkMode INTEGER DEFAULT 0,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
     // 确保users表有theme和darkMode字段（SQLite不支持ALTER TABLE ADD COLUMN IF NOT EXISTS）
     // 所以我们需要检查字段是否存在，如果不存在则重新创建表
@@ -337,30 +166,14 @@ async function initializeDatabase() {
     }
 
     // Insert a default admin user if none exists
-    let adminExists;
-
-    if (sqlite3Mode) {
-      adminExists = await db
-        .prepare("SELECT * FROM users WHERE username = 'admin'")
-        .get();
-    } else {
-      adminExists = db
-        .prepare("SELECT * FROM users WHERE username = 'admin'")
-        .get();
-    }
+    const adminExists = db
+      .prepare("SELECT * FROM users WHERE username = 'admin'")
+      .get();
 
     if (!adminExists) {
-      if (sqlite3Mode) {
-        await db
-          .prepare(
-            "INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)"
-          )
-          .run("admin", "password", "Administrator", "admin");
-      } else {
-        db.prepare(
-          "INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)"
-        ).run("admin", "password", "Administrator", "admin");
-      }
+      db.prepare(
+        "INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)"
+      ).run("admin", "password", "Administrator", "admin");
       console.log("Default admin user created");
     }
 
@@ -372,7 +185,7 @@ async function initializeDatabase() {
 }
 
 // Call database initialization
-await initializeDatabase();
+initializeDatabase();
 
 // API Routes
 
