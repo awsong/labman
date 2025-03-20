@@ -43,19 +43,26 @@
 
         <div>
           <label
-            for="organization"
+            for="organizationId"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             牵头单位 <span class="text-red-500">*</span>
           </label>
-          <input
-            id="organization"
-            v-model="form.organization"
-            type="text"
+          <select
+            id="organizationId"
+            v-model="form.organizationId"
             required
             class="form-input"
-            placeholder="请输入牵头单位"
-          />
+          >
+            <option value="" disabled>请选择牵头单位</option>
+            <option
+              v-for="org in organizations"
+              :key="org.id"
+              :value="org.id"
+            >
+              {{ org.name }} ({{ org.type }})
+            </option>
+          </select>
         </div>
 
         <div>
@@ -331,7 +338,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, onMounted } from "vue";
 import {
   DocumentTextIcon,
   DocumentArrowUpIcon,
@@ -365,11 +372,11 @@ const props = defineProps({
 
 const emit = defineEmits(["submit", "cancel", "file-selected"]);
 
-// Create a reactive form object with the initial data
-const form = reactive({
+const organizations = ref([]);
+const form = ref({
   name: "",
   type: "",
-  organization: "",
+  organizationId: "",
   leader: "",
   contact: "",
   teamAllocation: "",
@@ -379,23 +386,66 @@ const form = reactive({
   summary: "",
   kpis: "",
   budget: null,
+  ...props.initialData
 });
 
 // Track the selected file
 const selectedFile = ref(null);
+
+// 获取组织列表
+const fetchOrganizations = async () => {
+  try {
+    const response = await fetch('/api/organizations');
+    const data = await response.json();
+    organizations.value = data;
+    
+    // 如果是编辑模式，需要将 organization 转换为 organizationId
+    if (props.initialData?.organization) {
+      const org = organizations.value.find(o => o.name === props.initialData.organization);
+      if (org) {
+        form.value.organizationId = org.id;
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching organizations:', error);
+  }
+};
+
+onMounted(() => {
+  fetchOrganizations();
+});
 
 // Watch for changes in initialData and update the form
 watch(
   () => props.initialData,
   (newData) => {
     if (newData) {
-      Object.keys(form).forEach((key) => {
-        form[key] = newData[key] !== undefined ? newData[key] : form[key];
+      Object.keys(form.value).forEach((key) => {
+        if (key !== 'organizationId') {
+          form.value[key] = newData[key] !== undefined ? newData[key] : form.value[key];
+        }
       });
+      
+      if (newData.organization && organizations.value.length > 0) {
+        const org = organizations.value.find(o => o.name === newData.organization);
+        if (org) {
+          form.value.organizationId = org.id;
+        }
+      }
     }
   },
   { immediate: true, deep: true }
 );
+
+// Watch for changes in organizations and update the form
+watch(organizations, (newOrgs) => {
+  if (newOrgs.length > 0 && props.initialData?.organization) {
+    const org = newOrgs.find(o => o.name === props.initialData.organization);
+    if (org) {
+      form.value.organizationId = org.id;
+    }
+  }
+});
 
 // Handle file selection
 const handleFileChange = (event) => {
@@ -408,6 +458,16 @@ const handleFileChange = (event) => {
 
 // Submit the form
 const submitForm = () => {
-  emit("submit", { ...form });
+  // 在提交表单时，找到对应的组织信息
+  const organization = organizations.value.find(o => o.id === form.value.organizationId);
+  const submitData = {
+    ...form.value,
+    organization: organization?.name // 为了保持与现有API的兼容性
+  };
+
+  // 移除 organizationId，因为后端 API 不需要这个字段
+  delete submitData.organizationId;
+
+  emit("submit", submitData);
 };
 </script>

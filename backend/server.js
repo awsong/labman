@@ -158,14 +158,28 @@ function initializeDatabase() {
 
       for (const project of oldProjects) {
         // Find or create organization
-        let org = db
-          .prepare("SELECT id FROM organizations WHERE name = ?")
-          .get(project.organization);
-        if (!org) {
-          const result = db
-            .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
-            .run(project.organization, "其他");
-          org = { id: result.lastInsertRowid };
+        let org = null;
+        if (project.organization) {
+          org = db
+            .prepare("SELECT id FROM organizations WHERE name = ?")
+            .get(project.organization);
+          if (!org) {
+            const result = db
+              .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
+              .run(project.organization, "其他");
+            org = { id: result.lastInsertRowid };
+          }
+        } else {
+          // If no organization is specified, use a default one
+          org = db
+            .prepare("SELECT id FROM organizations WHERE name = ?")
+            .get("其他");
+          if (!org) {
+            const result = db
+              .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
+              .run("其他", "其他");
+            org = { id: result.lastInsertRowid };
+          }
         }
 
         insertProject.run(
