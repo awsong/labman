@@ -47,13 +47,51 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // Database initialization
 function initializeDatabase() {
   try {
-    // Create projects table
+    // Create organizations table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS organizations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        type TEXT NOT NULL,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default organizations if none exist
+    const organizationsExist = db
+      .prepare("SELECT COUNT(*) as count FROM organizations")
+      .get();
+    if (organizationsExist.count === 0) {
+      const defaultOrganizations = [
+        { name: "计算机科学与技术学院", type: "学院" },
+        { name: "软件学院", type: "学院" },
+        { name: "人工智能学院", type: "学院" },
+        { name: "信息工程学院", type: "学院" },
+        { name: "华为技术有限公司", type: "企业" },
+        { name: "腾讯科技", type: "企业" },
+        { name: "阿里巴巴", type: "企业" },
+        { name: "科技部", type: "政府部门" },
+        { name: "工信部", type: "政府部门" },
+        { name: "教育部", type: "政府部门" },
+      ];
+
+      const insertOrg = db.prepare(
+        "INSERT INTO organizations (name, type) VALUES (?, ?)"
+      );
+      for (const org of defaultOrganizations) {
+        insertOrg.run(org.name, org.type);
+      }
+      console.log("Default organizations created");
+    }
+
+    // Create projects table with organization reference
     db.exec(`
       CREATE TABLE IF NOT EXISTS projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         type TEXT NOT NULL,
-        organization TEXT NOT NULL,
+        organizationId INTEGER NOT NULL,
         leader TEXT NOT NULL,
         contact TEXT,
         teamAllocation TEXT,
@@ -65,9 +103,94 @@ function initializeDatabase() {
         budget REAL,
         taskDocument TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (organizationId) REFERENCES organizations (id)
       )
     `);
+
+    // Migrate existing projects data if needed
+    const hasOldProjects = db
+      .prepare("SELECT COUNT(*) as count FROM projects")
+      .get();
+    if (hasOldProjects.count > 0) {
+      // Get all existing projects
+      const oldProjects = db.prepare("SELECT * FROM projects").all();
+
+      // Create temporary table for projects
+      db.exec(
+        "CREATE TABLE IF NOT EXISTS projects_temp AS SELECT * FROM projects"
+      );
+
+      // Drop existing projects table
+      db.exec("DROP TABLE projects");
+
+      // Create new projects table
+      db.exec(`
+        CREATE TABLE projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          type TEXT NOT NULL,
+          organizationId INTEGER NOT NULL,
+          leader TEXT NOT NULL,
+          contact TEXT,
+          teamAllocation TEXT,
+          collaborators TEXT,
+          startDate TEXT NOT NULL,
+          endDate TEXT NOT NULL,
+          summary TEXT,
+          kpis TEXT,
+          budget REAL,
+          taskDocument TEXT,
+          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (organizationId) REFERENCES organizations (id)
+        )
+      `);
+
+      // Migrate data from temp table to new table
+      const insertProject = db.prepare(`
+        INSERT INTO projects (
+          name, type, organizationId, leader, contact, teamAllocation, 
+          collaborators, startDate, endDate, summary, kpis, budget, 
+          taskDocument, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const project of oldProjects) {
+        // Find or create organization
+        let org = db
+          .prepare("SELECT id FROM organizations WHERE name = ?")
+          .get(project.organization);
+        if (!org) {
+          const result = db
+            .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
+            .run(project.organization, "其他");
+          org = { id: result.lastInsertRowid };
+        }
+
+        insertProject.run(
+          project.name,
+          project.type,
+          org.id,
+          project.leader,
+          project.contact,
+          project.teamAllocation,
+          project.collaborators,
+          project.startDate,
+          project.endDate,
+          project.summary,
+          project.kpis,
+          project.budget,
+          project.taskDocument,
+          project.createdAt,
+          project.updatedAt
+        );
+      }
+
+      // Drop temporary table
+      db.exec("DROP TABLE projects_temp");
+      console.log("Projects data migrated successfully");
+    }
 
     // Create milestones table
     db.exec(`
@@ -104,7 +227,7 @@ function initializeDatabase() {
       )
     `);
 
-    // Create gantt table for gantt chart data
+    // Create gantt table
     db.exec(`
       CREATE TABLE IF NOT EXISTS gantt (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,7 +303,7 @@ function initializeDatabase() {
     console.log("Database initialized successfully");
   } catch (error) {
     console.error("Error initializing database:", error);
-    process.exit(1);
+    throw error;
   }
 }
 
@@ -368,7 +491,17 @@ app.put("/api/auth/password", (req, res) => {
 app.get("/api/projects", (req, res) => {
   try {
     const projects = db
-      .prepare("SELECT * FROM projects ORDER BY startDate DESC")
+      .prepare(
+        `
+        SELECT 
+          p.*,
+          o.name as organization,
+          o.type as organizationType
+        FROM projects p
+        JOIN organizations o ON p.organizationId = o.id
+        ORDER BY p.startDate DESC
+      `
+      )
       .all();
     res.json(projects);
   } catch (error) {
@@ -379,7 +512,17 @@ app.get("/api/projects", (req, res) => {
 app.get("/api/projects/:id", (req, res) => {
   try {
     const project = db
-      .prepare("SELECT * FROM projects WHERE id = ?")
+      .prepare(
+        `
+        SELECT 
+          p.*,
+          o.name as organization,
+          o.type as organizationType
+        FROM projects p
+        JOIN organizations o ON p.organizationId = o.id
+        WHERE p.id = ?
+      `
+      )
       .get(req.params.id);
 
     if (!project) {
@@ -397,7 +540,7 @@ app.post("/api/projects", (req, res) => {
     const {
       name,
       type,
-      organization,
+      organizationId,
       leader,
       contact,
       teamAllocation,
@@ -411,7 +554,7 @@ app.post("/api/projects", (req, res) => {
 
     const stmt = db.prepare(`
       INSERT INTO projects (
-        name, type, organization, leader, contact, teamAllocation, 
+        name, type, organizationId, leader, contact, teamAllocation, 
         collaborators, startDate, endDate, summary, kpis, budget
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
@@ -419,7 +562,7 @@ app.post("/api/projects", (req, res) => {
     const result = stmt.run(
       name,
       type,
-      organization,
+      organizationId,
       leader,
       contact,
       teamAllocation || null,
@@ -431,9 +574,19 @@ app.post("/api/projects", (req, res) => {
       budget || null
     );
 
-    // Get the created project
+    // Get the created project with organization details
     const project = db
-      .prepare("SELECT * FROM projects WHERE id = ?")
+      .prepare(
+        `
+        SELECT 
+          p.*,
+          o.name as organization,
+          o.type as organizationType
+        FROM projects p
+        JOIN organizations o ON p.organizationId = o.id
+        WHERE p.id = ?
+      `
+      )
       .get(result.lastInsertRowid);
 
     res.status(201).json(project);
@@ -447,7 +600,7 @@ app.put("/api/projects/:id", (req, res) => {
     const {
       name,
       type,
-      organization,
+      organizationId,
       leader,
       contact,
       teamAllocation,
@@ -461,7 +614,7 @@ app.put("/api/projects/:id", (req, res) => {
 
     const stmt = db.prepare(`
       UPDATE projects SET
-        name = ?, type = ?, organization = ?, leader = ?, contact = ?,
+        name = ?, type = ?, organizationId = ?, leader = ?, contact = ?,
         teamAllocation = ?, collaborators = ?, startDate = ?, endDate = ?,
         summary = ?, kpis = ?, budget = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
@@ -470,7 +623,7 @@ app.put("/api/projects/:id", (req, res) => {
     stmt.run(
       name,
       type,
-      organization,
+      organizationId,
       leader,
       contact,
       teamAllocation || null,
@@ -483,9 +636,19 @@ app.put("/api/projects/:id", (req, res) => {
       req.params.id
     );
 
-    // Get the updated project
+    // Get the updated project with organization details
     const project = db
-      .prepare("SELECT * FROM projects WHERE id = ?")
+      .prepare(
+        `
+        SELECT 
+          p.*,
+          o.name as organization,
+          o.type as organizationType
+        FROM projects p
+        JOIN organizations o ON p.organizationId = o.id
+        WHERE p.id = ?
+      `
+      )
       .get(req.params.id);
 
     if (!project) {
@@ -912,6 +1075,212 @@ app.get("/api/statistics", (req, res) => {
       activeProjects,
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add organizations API endpoints
+app.get("/api/organizations", (req, res) => {
+  try {
+    const organizations = db
+      .prepare("SELECT * FROM organizations ORDER BY name")
+      .all();
+    res.json(organizations);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/organizations/:id", (req, res) => {
+  try {
+    const organization = db
+      .prepare("SELECT * FROM organizations WHERE id = ?")
+      .get(req.params.id);
+
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found" });
+    }
+
+    res.json(organization);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Generate test data endpoint
+app.post("/api/generate-test-data", (req, res) => {
+  try {
+    const projectTypes = [
+      "国家级项目",
+      "省部级项目",
+      "市级项目",
+      "企业合作项目",
+      "横向课题",
+      "院校内部项目",
+    ];
+
+    const projectPrefixes = [
+      "人工智能",
+      "大数据",
+      "区块链",
+      "物联网",
+      "云计算",
+      "信息安全",
+      "智能制造",
+      "数字经济",
+      "智慧城市",
+      "新能源",
+    ];
+
+    const projectSuffixes = [
+      "关键技术研究",
+      "应用示范",
+      "技术创新",
+      "平台建设",
+      "系统开发",
+      "技术攻关",
+      "产业化应用",
+      "集成创新",
+      "示范工程",
+      "技术改造",
+    ];
+
+    const leaders = [
+      "张三",
+      "李四",
+      "王五",
+      "赵六",
+      "钱七",
+      "孙八",
+      "周九",
+      "吴十",
+      "郑一",
+      "王二",
+    ];
+
+    // Clear existing data
+    db.prepare("DELETE FROM projects").run();
+    db.prepare("DELETE FROM milestones").run();
+    db.prepare("DELETE FROM progress").run();
+    db.prepare("DELETE FROM gantt").run();
+
+    // Get all organizations
+    const organizations = db.prepare("SELECT * FROM organizations").all();
+
+    // Generate 200 projects
+    const insertProject = db.prepare(`
+      INSERT INTO projects (
+        name, type, organizationId, leader, contact, teamAllocation,
+        collaborators, startDate, endDate, summary, kpis, budget,
+        taskDocument
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMilestone = db.prepare(`
+      INSERT INTO milestones (
+        projectId, title, description, type, dueDate, status, completion
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertProgress = db.prepare(`
+      INSERT INTO progress (
+        projectId, kpiId, kpiName, target, current, status, completion
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (let i = 1; i <= 200; i++) {
+      // Generate random dates within 2020-2025
+      const startYear = 2020 + Math.floor(Math.random() * 3);
+      const startMonth = 1 + Math.floor(Math.random() * 12);
+      const startDate = new Date(startYear, startMonth - 1, 1);
+
+      // Project duration: 1-3 years
+      const durationMonths = 12 + Math.floor(Math.random() * 24);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + durationMonths);
+
+      const org =
+        organizations[Math.floor(Math.random() * organizations.length)];
+      const type =
+        projectTypes[Math.floor(Math.random() * projectTypes.length)];
+      const leader = leaders[Math.floor(Math.random() * leaders.length)];
+      const budget = 50000 + Math.floor(Math.random() * 950000);
+
+      // Generate project name
+      const prefix =
+        projectPrefixes[Math.floor(Math.random() * projectPrefixes.length)];
+      const suffix =
+        projectSuffixes[Math.floor(Math.random() * projectSuffixes.length)];
+      const projectName = `${prefix}${suffix}`;
+
+      // Insert project
+      const result = insertProject.run(
+        projectName,
+        type,
+        org.id,
+        leader,
+        `${leader}@example.com`,
+        JSON.stringify({ 研究人员: 3, 技术人员: 2, 管理人员: 1 }),
+        JSON.stringify(["合作单位A", "合作单位B"]),
+        startDate.toISOString().split("T")[0],
+        endDate.toISOString().split("T")[0],
+        `这是一个${type}，主要研究${prefix}${suffix}相关内容，包括关键技术突破、应用示范等。`,
+        JSON.stringify([
+          { name: "论文发表", target: "3篇" },
+          { name: "专利申请", target: "2项" },
+          { name: "软件著作权", target: "1项" },
+        ]),
+        budget,
+        null
+      );
+
+      const projectId = result.lastInsertRowid;
+
+      // Insert 3-5 milestones for each project
+      const milestoneCount = 3 + Math.floor(Math.random() * 3);
+      for (let j = 0; j < milestoneCount; j++) {
+        const milestoneDate = new Date(startDate);
+        milestoneDate.setMonth(
+          milestoneDate.getMonth() +
+            Math.floor((durationMonths * (j + 1)) / (milestoneCount + 1))
+        );
+
+        insertMilestone.run(
+          projectId,
+          `${prefix}${j + 1}阶段性目标`,
+          `完成${prefix}相关的第${j + 1}阶段研究内容`,
+          ["关键", "普通"][Math.floor(Math.random() * 2)],
+          milestoneDate.toISOString().split("T")[0],
+          ["未开始", "进行中", "已完成"][Math.floor(Math.random() * 3)],
+          Math.floor(Math.random() * 100)
+        );
+      }
+
+      // Insert 3 progress records for each project
+      const kpis = [
+        { id: "kpi1", name: "论文发表", target: "3篇" },
+        { id: "kpi2", name: "专利申请", target: "2项" },
+        { id: "kpi3", name: "软件著作权", target: "1项" },
+      ];
+
+      kpis.forEach((kpi) => {
+        insertProgress.run(
+          projectId,
+          kpi.id,
+          kpi.name,
+          kpi.target,
+          Math.floor(Math.random() * 3) + "项",
+          ["未开始", "进行中", "已完成"][Math.floor(Math.random() * 3)],
+          Math.floor(Math.random() * 100)
+        );
+      });
+    }
+
+    res.json({
+      message: "Successfully generated 200 test projects with related data",
+    });
+  } catch (error) {
+    console.error("Error generating test data:", error);
     res.status(500).json({ error: error.message });
   }
 });
