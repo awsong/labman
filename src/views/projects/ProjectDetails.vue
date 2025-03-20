@@ -229,13 +229,21 @@
               <p class="text-gray-600 dark:text-gray-400 mb-4">
                 您可以下载或在线查看项目任务书文档
               </p>
-              <a
-                :href="project.taskDocument"
-                target="_blank"
-                class="btn btn-primary"
-              >
-                查看任务书
-              </a>
+              <div class="flex justify-center space-x-4">
+                <a
+                  :href="getDocumentUrl(project.taskDocument)"
+                  target="_blank"
+                  class="btn btn-primary"
+                >
+                  查看任务书
+                </a>
+                <button 
+                  @click="handleUploadClick" 
+                  class="btn btn-outline"
+                >
+                  更新任务书
+                </button>
+              </div>
             </div>
             <div v-else class="text-center py-12">
               <document-icon class="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -245,12 +253,28 @@
                 暂无项目任务书
               </h3>
               <p class="text-gray-600 dark:text-gray-400 mb-4">
-                您可以在编辑项目时上传任务书文档
+                您可以直接上传任务书文档或在编辑项目时上传
               </p>
-              <router-link :to="`/projects/${id}/edit`" class="btn btn-outline">
-                上传任务书
-              </router-link>
+              <div class="flex justify-center space-x-4">
+                <button 
+                  @click="handleUploadClick" 
+                  class="btn btn-primary"
+                >
+                  上传任务书
+                </button>
+                <router-link :to="`/projects/${id}/edit`" class="btn btn-outline">
+                  编辑项目
+                </router-link>
+              </div>
             </div>
+            <!-- 隐藏的文件输入元素 -->
+            <input
+              type="file"
+              ref="fileInput"
+              @change="handleFileChange"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+              class="hidden"
+            />
           </div>
         </div>
       </div>
@@ -661,6 +685,7 @@ const milestoneSaving = ref(false);
 const showDeleteMilestoneModal = ref(false);
 const milestoneToDelete = ref(null);
 const deletingMilestone = ref(false);
+const fileInput = ref(null);
 
 // Tabs definition
 const tabs = [
@@ -889,6 +914,50 @@ const loadMilestones = async () => {
   } finally {
     milestonesLoading.value = false;
   }
+};
+
+// Handle upload click
+const handleUploadClick = () => {
+  // Trigger hidden file input click
+  fileInput.value.click();
+};
+
+// Handle file change
+const handleFileChange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    const formData = new FormData();
+    formData.append("taskDocument", file);
+    
+    // Show uploading status
+    projectStore.loading = true;
+    
+    // Upload file
+    await projectStore.uploadTaskDocument(id.value, formData);
+    
+    // Reset file input
+    event.target.value = "";
+    
+    // Success message
+    alert("任务书上传成功！");
+  } catch (error) {
+    console.error("上传任务书失败:", error);
+    alert("上传任务书失败: " + (error.message || "未知错误"));
+  } finally {
+    projectStore.loading = false;
+  }
+};
+
+// Get document URL
+const getDocumentUrl = (url) => {
+  if (!url) return '';
+  // 将/uploads/开头的路径转换为指向后端服务器的URL
+  if (url.startsWith('/uploads/')) {
+    return `http://localhost:3000${url}`;
+  }
+  return url;
 };
 
 // Load project data on component mount

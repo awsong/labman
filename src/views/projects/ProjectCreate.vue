@@ -21,7 +21,11 @@
     </div>
 
     <div v-else class="card p-6">
-      <project-form @submit="createProject" @cancel="goBack" />
+      <project-form 
+        @submit="createProject" 
+        @cancel="goBack"
+        @file-selected="handleFileSelected" 
+      />
     </div>
   </div>
 </template>
@@ -37,8 +41,13 @@ const router = useRouter();
 const projectStore = useProjectStore();
 const loading = ref(false);
 const error = ref("");
+const selectedFile = ref(null);
 
-const createProject = async (projectData, file) => {
+const handleFileSelected = (file) => {
+  selectedFile.value = file;
+};
+
+const createProject = async (projectData) => {
   loading.value = true;
   error.value = "";
 
@@ -46,8 +55,10 @@ const createProject = async (projectData, file) => {
     const newProject = await projectStore.createProject(projectData);
 
     // Upload document if provided
-    if (file) {
-      await projectStore.uploadProjectDocument(newProject.id, file);
+    if (selectedFile.value) {
+      const formData = new FormData();
+      formData.append("taskDocument", selectedFile.value);
+      await projectStore.uploadTaskDocument(newProject.id, formData);
     }
 
     // Redirect to project details page
@@ -55,6 +66,7 @@ const createProject = async (projectData, file) => {
   } catch (err) {
     console.error("Error creating project:", err);
     error.value = "创建项目失败，请稍后再试";
+  } finally {
     loading.value = false;
   }
 };
