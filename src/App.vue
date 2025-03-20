@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen flex flex-col" :class="themeStore.currentTheme">
-    <app-header />
-    <div class="flex-1 flex">
+    <app-header class="flex-shrink-0" />
+    <div class="flex-1 flex overflow-hidden">
       <app-sidebar v-if="authStore.isLoggedIn" />
-      <main class="flex-1 p-6">
+      <main class="flex-1 p-6 overflow-auto">
         <router-view />
       </main>
     </div>

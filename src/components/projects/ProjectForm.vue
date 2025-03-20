@@ -46,7 +46,7 @@
             for="organization"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            组织单位 <span class="text-red-500">*</span>
+            牵头单位 <span class="text-red-500">*</span>
           </label>
           <input
             id="organization"
@@ -54,7 +54,7 @@
             type="text"
             required
             class="form-input"
-            placeholder="请输入组织单位"
+            placeholder="请输入牵头单位"
           />
         </div>
 

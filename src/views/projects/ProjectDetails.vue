@@ -34,7 +34,7 @@
           </div>
           <p class="mt-1 text-gray-600 dark:text-gray-400">
             <span class="inline-block mr-3"
-              >组织单位: {{ project.organization }}</span
+              >牵头单位: {{ project.organization }}</span
             >
             <span class="inline-block mr-3">负责人: {{ project.leader }}</span>
             <span class="inline-block"

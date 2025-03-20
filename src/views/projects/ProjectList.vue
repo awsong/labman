@@ -116,127 +116,122 @@
     </div>
 
     <div v-else>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                项目名称
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                类型
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                组织单位
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                项目负责人
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                起止日期
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                状态
-              </th>
-              <th
-                scope="col"
-                class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-              >
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody
-            class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
-          >
-            <tr
-              v-for="project in filteredProjects"
-              :key="project.id"
-              class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+      <div class="overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-800">
+              <tr>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[28%]"
+                >
+                  项目名称
+                </th>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[10%]"
+                >
+                  类型
+                </th>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[18%]"
+                >
+                  组织单位
+                </th>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[10%]"
+                >
+                  项目负责人
+                </th>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[20%] whitespace-nowrap"
+                >
+                  起止日期
+                </th>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[8%] whitespace-nowrap"
+                >
+                  状态
+                </th>
+                <th
+                  scope="col"
+                  class="sticky top-0 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[6%]"
+                >
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
-                <router-link
-                  :to="`/projects/${project.id}`"
-                  class="text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                >
-                  {{ project.name }}
-                </router-link>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="getProjectTypeClass(project.type)"
-                >
-                  {{ project.type }}
-                </span>
-              </td>
-              <td
-                class="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300"
+              <tr
+                v-for="project in filteredProjects"
+                :key="project.id"
+                class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
-                {{ project.organization }}
-              </td>
-              <td
-                class="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300"
-              >
-                {{ project.leader }}
-              </td>
-              <td
-                class="px-6 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300"
-              >
-                {{ formatDate(project.startDate) }} -
-                {{ formatDate(project.endDate) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="getProjectStatusClass(getProjectStatus(project))"
-                >
-                  {{ getProjectStatusText(project) }}
-                </span>
-              </td>
-              <td
-                class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
-              >
-                <router-link
-                  :to="`/projects/${project.id}`"
-                  class="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 mr-3"
-                >
-                  查看
-                </router-link>
-                <router-link
-                  :to="`/projects/${project.id}/edit`"
-                  class="text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300 mr-3"
-                >
-                  编辑
-                </router-link>
-                <button
-                  @click="confirmDelete(project)"
-                  class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
-                >
-                  删除
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <td class="px-6 py-4">
+                  <router-link
+                    :to="`/projects/${project.id}`"
+                    class="text-primary-600 dark:text-primary-400 hover:underline font-medium truncate block"
+                  >
+                    {{ project.name }}
+                  </router-link>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span
+                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                    :class="getProjectTypeClass(project.type)"
+                  >
+                    {{ project.type }}
+                  </span>
+                </td>
+                <td class="px-4 py-4">
+                  <span class="truncate block text-gray-600 dark:text-gray-300">
+                    {{ project.organization }}
+                  </span>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                  {{ project.leader }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-gray-600 dark:text-gray-300 text-sm">
+                  {{ formatDate(project.startDate) }} - {{ formatDate(project.endDate) }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap">
+                  <span
+                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                    :class="getProjectStatusClass(getProjectStatus(project))"
+                  >
+                    {{ getProjectStatusText(project) }}
+                  </span>
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                  <router-link
+                    :to="`/projects/${project.id}`"
+                    class="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300"
+                  >
+                    查看
+                  </router-link>
+                  <router-link
+                    :to="`/projects/${project.id}/edit`"
+                    class="text-yellow-600 dark:text-yellow-400 hover:text-yellow-900 dark:hover:text-yellow-300"
+                  >
+                    编辑
+                  </router-link>
+                  <button
+                    @click="confirmDelete(project)"
+                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300"
+                  >
+                    删除
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
