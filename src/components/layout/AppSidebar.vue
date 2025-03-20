@@ -1,19 +1,19 @@
 <template>
   <aside
-    class="w-64 bg-gray-50 dark:bg-gray-800 dark:border-r dark:border-gray-700"
+    class="w-64 bg-gray-50 dark:bg-gray-800 dark:border-r dark:border-gray-700 flex-shrink-0"
   >
     <div class="h-full px-3 py-4">
       <nav class="space-y-1">
         <router-link
           to="/dashboard"
-          class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+          class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 whitespace-nowrap"
           :class="{
             'bg-primary-50 text-primary-700 dark:bg-gray-700':
               isActive('/dashboard'),
           }"
         >
-          <home-icon class="h-5 w-5 mr-2" />
-          <span>首页</span>
+          <home-icon class="h-5 w-5 flex-shrink-0 mr-3" />
+          <span class="truncate">首页</span>
         </router-link>
 
         <div class="pt-4">
@@ -25,38 +25,38 @@
 
           <router-link
             to="/projects"
-            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 whitespace-nowrap"
             :class="{
               'bg-primary-50 text-primary-700 dark:bg-gray-700':
                 isActive('/projects'),
             }"
           >
-            <folder-icon class="h-5 w-5 mr-2" />
-            <span>项目列表</span>
+            <folder-icon class="h-5 w-5 flex-shrink-0 mr-3" />
+            <span class="truncate">项目列表</span>
           </router-link>
 
           <router-link
             to="/milestones"
-            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 whitespace-nowrap"
             :class="{
               'bg-primary-50 text-primary-700 dark:bg-gray-700':
                 isActive('/milestones'),
             }"
           >
-            <flag-icon class="h-5 w-5 mr-2" />
-            <span>里程碑管理</span>
+            <flag-icon class="h-5 w-5 flex-shrink-0 mr-3" />
+            <span class="truncate">里程碑管理</span>
           </router-link>
 
           <router-link
             to="/progress"
-            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 whitespace-nowrap"
             :class="{
               'bg-primary-50 text-primary-700 dark:bg-gray-700':
                 isActive('/progress'),
             }"
           >
-            <chart-bar-icon class="h-5 w-5 mr-2" />
-            <span>进度管理</span>
+            <chart-bar-icon class="h-5 w-5 flex-shrink-0 mr-3" />
+            <span class="truncate">进度管理</span>
           </router-link>
         </div>
 
@@ -69,14 +69,14 @@
 
           <router-link
             to="/statistics"
-            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 whitespace-nowrap"
             :class="{
               'bg-primary-50 text-primary-700 dark:bg-gray-700':
                 isActive('/statistics'),
             }"
           >
-            <chart-pie-icon class="h-5 w-5 mr-2" />
-            <span>统计数据</span>
+            <chart-pie-icon class="h-5 w-5 flex-shrink-0 mr-3" />
+            <span class="truncate">统计数据</span>
           </router-link>
         </div>
 
@@ -89,14 +89,14 @@
 
           <router-link
             to="/settings"
-            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            class="flex items-center rounded-lg px-3 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 whitespace-nowrap"
             :class="{
               'bg-primary-50 text-primary-700 dark:bg-gray-700':
                 isActive('/settings'),
             }"
           >
-            <cog-icon class="h-5 w-5 mr-2" />
-            <span>系统设置</span>
+            <cog-icon class="h-5 w-5 flex-shrink-0 mr-3" />
+            <span class="truncate">系统设置</span>
           </router-link>
         </div>
       </nav>
