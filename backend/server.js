@@ -74,6 +74,7 @@ function initializeDatabase() {
         { name: "科技部", type: "政府部门" },
         { name: "工信部", type: "政府部门" },
         { name: "教育部", type: "政府部门" },
+        { name: "其他", type: "其他" },
       ];
 
       const insertOrg = db.prepare(
@@ -107,104 +108,6 @@ function initializeDatabase() {
         FOREIGN KEY (organizationId) REFERENCES organizations (id)
       )
     `);
-
-    // Migrate existing projects data if needed
-    const hasOldProjects = db
-      .prepare("SELECT COUNT(*) as count FROM projects")
-      .get();
-    if (hasOldProjects.count > 0) {
-      // Get all existing projects
-      const oldProjects = db.prepare("SELECT * FROM projects").all();
-
-      // Create temporary table for projects
-      db.exec(
-        "CREATE TABLE IF NOT EXISTS projects_temp AS SELECT * FROM projects"
-      );
-
-      // Drop existing projects table
-      db.exec("DROP TABLE projects");
-
-      // Create new projects table
-      db.exec(`
-        CREATE TABLE projects (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          type TEXT NOT NULL,
-          organizationId INTEGER NOT NULL,
-          leader TEXT NOT NULL,
-          contact TEXT,
-          teamAllocation TEXT,
-          collaborators TEXT,
-          startDate TEXT NOT NULL,
-          endDate TEXT NOT NULL,
-          summary TEXT,
-          kpis TEXT,
-          budget REAL,
-          taskDocument TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (organizationId) REFERENCES organizations (id)
-        )
-      `);
-
-      // Migrate data from temp table to new table
-      const insertProject = db.prepare(`
-        INSERT INTO projects (
-          name, type, organizationId, leader, contact, teamAllocation, 
-          collaborators, startDate, endDate, summary, kpis, budget, 
-          taskDocument, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const project of oldProjects) {
-        // Find or create organization
-        let org = null;
-        if (project.organization) {
-          org = db
-            .prepare("SELECT id FROM organizations WHERE name = ?")
-            .get(project.organization);
-          if (!org) {
-            const result = db
-              .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
-              .run(project.organization, "其他");
-            org = { id: result.lastInsertRowid };
-          }
-        } else {
-          // If no organization is specified, use a default one
-          org = db
-            .prepare("SELECT id FROM organizations WHERE name = ?")
-            .get("其他");
-          if (!org) {
-            const result = db
-              .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
-              .run("其他", "其他");
-            org = { id: result.lastInsertRowid };
-          }
-        }
-
-        insertProject.run(
-          project.name,
-          project.type,
-          org.id,
-          project.leader,
-          project.contact,
-          project.teamAllocation,
-          project.collaborators,
-          project.startDate,
-          project.endDate,
-          project.summary,
-          project.kpis,
-          project.budget,
-          project.taskDocument,
-          project.createdAt,
-          project.updatedAt
-        );
-      }
-
-      // Drop temporary table
-      db.exec("DROP TABLE projects_temp");
-      console.log("Projects data migrated successfully");
-    }
 
     // Create milestones table
     db.exec(`
@@ -265,42 +168,6 @@ function initializeDatabase() {
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
-    // 确保users表有theme和darkMode字段（SQLite不支持ALTER TABLE ADD COLUMN IF NOT EXISTS）
-    // 所以我们需要检查字段是否存在，如果不存在则重新创建表
-    let hasThemeField = false;
-    let hasDarkModeField = false;
-
-    try {
-      // 获取表结构
-      const tableInfo = db.prepare("PRAGMA table_info(users)").all();
-
-      // 检查主题相关字段是否存在
-      for (const column of tableInfo) {
-        if (column.name === "theme") hasThemeField = true;
-        if (column.name === "darkMode") hasDarkModeField = true;
-      }
-
-      console.log(
-        "用户表字段检查 - theme字段:",
-        hasThemeField,
-        "darkMode字段:",
-        hasDarkModeField
-      );
-
-      // 如果缺少主题相关字段，则添加这些字段
-      if (!hasThemeField) {
-        console.log("添加theme字段到users表");
-        db.exec("ALTER TABLE users ADD COLUMN theme TEXT DEFAULT ''");
-      }
-
-      if (!hasDarkModeField) {
-        console.log("添加darkMode字段到users表");
-        db.exec("ALTER TABLE users ADD COLUMN darkMode INTEGER DEFAULT 0");
-      }
-    } catch (error) {
-      console.error("检查或更新users表结构时出错:", error);
-    }
 
     // Insert a default admin user if none exists
     const adminExists = db
