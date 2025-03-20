@@ -460,13 +460,17 @@ const handleFileChange = (event) => {
 const submitForm = () => {
   // 在提交表单时，找到对应的组织信息
   const organization = organizations.value.find(o => o.id === form.value.organizationId);
+  
+  if (!organization) {
+    alert('请选择牵头单位');
+    return;
+  }
+  
   const submitData = {
     ...form.value,
-    organization: organization?.name // 为了保持与现有API的兼容性
+    organization: organization.name, // 为了保持与现有API的兼容性
+    organizationId: organization.id // 添加 organizationId
   };
-
-  // 移除 organizationId，因为后端 API 不需要这个字段
-  delete submitData.organizationId;
 
   emit("submit", submitData);
 };
