@@ -137,7 +137,7 @@
                   scope="col"
                   class="sticky top-0 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800 w-[18%]"
                 >
-                  组织单位
+                  牵头单位
                 </th>
                 <th
                   scope="col"
