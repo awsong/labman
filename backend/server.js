@@ -547,6 +547,18 @@ app.post("/api/projects", (req, res) => {
       organizations, // Array of {organizationId, selfFunding, allocation}
     } = req.body;
 
+    // 根据名字查找用户 ID
+    const getUserIdByName = db.prepare(`
+      SELECT id FROM users WHERE name = ? AND organizationId = ?
+    `);
+
+    const leaderId = getUserIdByName.get(leader, organizationId)?.id;
+    const contactId = getUserIdByName.get(contact, organizationId)?.id;
+
+    if (!leaderId || !contactId) {
+      throw new Error("项目负责人或联系人不存在");
+    }
+
     // Insert project
     const insertProject = db.prepare(`
       INSERT INTO projects (
@@ -559,8 +571,8 @@ app.post("/api/projects", (req, res) => {
       name,
       type,
       organizationId,
-      leader,
-      contact,
+      leaderId,
+      contactId,
       teamAllocation || null,
       collaborators || null,
       startDate,
