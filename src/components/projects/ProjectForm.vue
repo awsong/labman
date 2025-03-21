@@ -152,39 +152,116 @@
 
     <div class="card mb-6">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        团队与合作信息
+        参与单位及经费
       </h3>
 
-      <div class="mb-4">
-        <label
-          for="teamAllocation"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          成员分工
-        </label>
-        <textarea
-          id="teamAllocation"
-          v-model="form.teamAllocation"
-          rows="3"
-          class="form-input"
-          placeholder="请详细描述项目团队成员及其分工"
-        ></textarea>
-      </div>
+      <div class="space-y-4">
+        <div v-for="(org, index) in form.organizations" :key="index" class="border p-4 rounded-lg">
+          <div class="flex justify-between items-center mb-4">
+            <h4 class="text-base font-medium">
+              {{ index === 0 ? '牵头单位' : `参与单位 ${index}` }}
+            </h4>
+            <button
+              v-if="index !== 0"
+              type="button"
+              class="text-red-600 hover:text-red-800"
+              @click="removeOrganization(index)"
+            >
+              删除
+            </button>
+          </div>
 
-      <div>
-        <label
-          for="collaborators"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                单位名称 <span class="text-red-500">*</span>
+              </label>
+              <select
+                v-model="org.organizationId"
+                required
+                class="form-input"
+                :disabled="index === 0"
+              >
+                <option value="" disabled>请选择单位</option>
+                <option
+                  v-for="org in organizations"
+                  :key="org.id"
+                  :value="org.id"
+                >
+                  {{ org.name }} ({{ org.type }})
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                自筹经费 (万元) <span class="text-red-500">*</span>
+              </label>
+              <input
+                v-model="org.selfFunding"
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                class="form-input"
+                @input="updateOrganizationFunding(index, 'selfFunding', $event.target.value)"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                拨款经费 (万元) <span class="text-red-500">*</span>
+              </label>
+              <input
+                v-model="org.allocation"
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                class="form-input"
+                @input="updateOrganizationFunding(index, 'allocation', $event.target.value)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-outline w-full"
+          @click="addOrganization"
         >
-          合作单位与合作人员
-        </label>
-        <textarea
-          id="collaborators"
-          v-model="form.collaborators"
-          rows="3"
-          class="form-input"
-          placeholder="请详细描述合作单位和相关合作人员信息"
-        ></textarea>
+          添加参与单位
+        </button>
+
+        <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <h4 class="text-base font-medium mb-2">项目总经费</h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                总自筹经费 (万元)
+              </label>
+              <div class="form-input bg-gray-100 dark:bg-gray-700">
+                {{ totalFunding.selfFunding }}
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                总拨款经费 (万元)
+              </label>
+              <div class="form-input bg-gray-100 dark:bg-gray-700">
+                {{ totalFunding.allocation }}
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                项目总经费 (万元)
+              </label>
+              <div class="form-input bg-gray-100 dark:bg-gray-700">
+                {{ totalFunding.total }}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -338,7 +415,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from "vue";
+import { ref, reactive, watch, onMounted, computed } from "vue";
 import {
   DocumentTextIcon,
   DocumentArrowUpIcon,
@@ -362,6 +439,7 @@ const props = defineProps({
       kpis: "",
       budget: null,
       taskDocument: null,
+      organizations: [],
     }),
   },
   loading: {
@@ -373,6 +451,7 @@ const props = defineProps({
 const emit = defineEmits(["submit", "cancel", "file-selected"]);
 
 const organizations = ref([]);
+const selectedOrganizations = ref([]);
 const form = ref({
   name: "",
   type: "",
@@ -386,6 +465,7 @@ const form = ref({
   summary: "",
   kpis: "",
   budget: null,
+  organizations: [],
   ...props.initialData
 });
 
@@ -399,12 +479,10 @@ const fetchOrganizations = async () => {
     const data = await response.json();
     organizations.value = data;
     
-    // 如果是编辑模式，需要将 organization 转换为 organizationId
-    if (props.initialData?.organization) {
-      const org = organizations.value.find(o => o.name === props.initialData.organization);
-      if (org) {
-        form.value.organizationId = org.id;
-      }
+    // 如果是编辑模式，需要设置已选择的组织
+    if (props.initialData?.organizations) {
+      selectedOrganizations.value = JSON.parse(props.initialData.organizations);
+      form.value.organizations = selectedOrganizations.value;
     }
   } catch (error) {
     console.error('Error fetching organizations:', error);
@@ -415,35 +493,64 @@ onMounted(() => {
   fetchOrganizations();
 });
 
-// Watch for changes in initialData and update the form
-watch(
-  () => props.initialData,
-  (newData) => {
-    if (newData) {
-      Object.keys(form.value).forEach((key) => {
-        if (key !== 'organizationId') {
-          form.value[key] = newData[key] !== undefined ? newData[key] : form.value[key];
-        }
-      });
-      
-      if (newData.organization && organizations.value.length > 0) {
-        const org = organizations.value.find(o => o.name === newData.organization);
-        if (org) {
-          form.value.organizationId = org.id;
-        }
-      }
-    }
-  },
-  { immediate: true, deep: true }
-);
+// 计算总经费
+const totalFunding = computed(() => {
+  const orgs = form.value.organizations;
+  return {
+    selfFunding: orgs.reduce((sum, org) => sum + (parseFloat(org.selfFunding) || 0), 0).toFixed(2),
+    allocation: orgs.reduce((sum, org) => sum + (parseFloat(org.allocation) || 0), 0).toFixed(2),
+    total: orgs.reduce((sum, org) => sum + (parseFloat(org.selfFunding) || 0) + (parseFloat(org.allocation) || 0), 0).toFixed(2)
+  };
+});
 
-// Watch for changes in organizations and update the form
-watch(organizations, (newOrgs) => {
-  if (newOrgs.length > 0 && props.initialData?.organization) {
-    const org = newOrgs.find(o => o.name === props.initialData.organization);
-    if (org) {
-      form.value.organizationId = org.id;
+// 添加参与单位
+const addOrganization = () => {
+  form.value.organizations.push({
+    organizationId: "",
+    selfFunding: "0.00",
+    allocation: "0.00"
+  });
+};
+
+// 移除参与单位
+const removeOrganization = (index) => {
+  form.value.organizations.splice(index, 1);
+};
+
+// 更新组织经费
+const updateOrganizationFunding = (index, field, value) => {
+  const org = form.value.organizations[index];
+  org[field] = parseFloat(value).toFixed(2);
+};
+
+// Watch for changes in initialData and update the form
+watch(() => props.initialData, (newData) => {
+  if (newData) {
+    Object.keys(form.value).forEach((key) => {
+      if (key !== 'organizations') {
+        form.value[key] = newData[key] !== undefined ? newData[key] : form.value[key];
+      }
+    });
+    
+    // 只在有 organizations 数据时进行解析
+    if (newData.organizations && typeof newData.organizations === 'string') {
+      form.value.organizations = JSON.parse(newData.organizations);
+    } else if (!form.value.organizations.length) {
+      // 如果没有组织数据，初始化一个空的牵头单位
+      form.value.organizations = [{
+        organizationId: "",
+        selfFunding: "0.00",
+        allocation: "0.00"
+      }];
     }
+  }
+}, { immediate: true });
+
+// 监听牵头单位的变化
+watch(() => form.value.organizationId, (newOrgId) => {
+  if (newOrgId && form.value.organizations.length > 0) {
+    // 更新参与单位及经费中的牵头单位
+    form.value.organizations[0].organizationId = newOrgId;
   }
 });
 
@@ -458,20 +565,23 @@ const handleFileChange = (event) => {
 
 // Submit the form
 const submitForm = () => {
-  // 在提交表单时，找到对应的组织信息
-  const organization = organizations.value.find(o => o.id === form.value.organizationId);
-  
-  if (!organization) {
-    alert('请选择牵头单位');
+  // 验证所有组织的经费信息
+  if (!form.value.organizations.length) {
+    alert('请至少添加一个参与单位');
     return;
   }
-  
-  const submitData = {
-    ...form.value,
-    organization: organization.name, // 为了保持与现有API的兼容性
-    organizationId: organization.id // 添加 organizationId
-  };
 
-  emit("submit", submitData);
+  for (const org of form.value.organizations) {
+    if (!org.organizationId) {
+      alert('请选择所有参与单位');
+      return;
+    }
+    if (parseFloat(org.selfFunding) < 0 || parseFloat(org.allocation) < 0) {
+      alert('经费不能为负数');
+      return;
+    }
+  }
+
+  emit("submit", form.value);
 };
 </script>

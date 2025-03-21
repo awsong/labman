@@ -101,11 +101,27 @@ function initializeDatabase() {
         endDate TEXT NOT NULL,
         summary TEXT,
         kpis TEXT,
-        budget REAL,
         taskDocument TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (organizationId) REFERENCES organizations (id)
+      )
+    `);
+
+    // Create project_organizations table for project-organization relationships
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS project_organizations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        projectId INTEGER NOT NULL,
+        organizationId INTEGER NOT NULL,
+        isLeader BOOLEAN NOT NULL DEFAULT 0,
+        selfFunding DECIMAL(10,2) NOT NULL DEFAULT 0,
+        allocation DECIMAL(10,2) NOT NULL DEFAULT 0,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE,
+        FOREIGN KEY (organizationId) REFERENCES organizations (id),
+        UNIQUE(projectId, organizationId)
       )
     `);
 
@@ -408,13 +424,40 @@ app.get("/api/projects", (req, res) => {
         SELECT 
           p.*,
           o.name as organization,
-          o.type as organizationType
+          o.type as organizationType,
+          (
+            SELECT json_group_array(
+              json_object(
+                'id', po.id,
+                'organizationId', po.organizationId,
+                'organizationName', o2.name,
+                'organizationType', o2.type,
+                'isLeader', po.isLeader,
+                'selfFunding', po.selfFunding,
+                'allocation', po.allocation
+              )
+            )
+            FROM project_organizations po
+            JOIN organizations o2 ON po.organizationId = o2.id
+            WHERE po.projectId = p.id
+          ) as organizations,
+          (
+            SELECT COALESCE(SUM(selfFunding), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalSelfFunding,
+          (
+            SELECT COALESCE(SUM(allocation), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
-        ORDER BY p.startDate DESC
+        ORDER BY p.createdAt DESC
       `
       )
       .all();
+
     res.json(projects);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -429,7 +472,33 @@ app.get("/api/projects/:id", (req, res) => {
         SELECT 
           p.*,
           o.name as organization,
-          o.type as organizationType
+          o.type as organizationType,
+          (
+            SELECT json_group_array(
+              json_object(
+                'id', po.id,
+                'organizationId', po.organizationId,
+                'organizationName', o2.name,
+                'organizationType', o2.type,
+                'isLeader', po.isLeader,
+                'selfFunding', po.selfFunding,
+                'allocation', po.allocation
+              )
+            )
+            FROM project_organizations po
+            JOIN organizations o2 ON po.organizationId = o2.id
+            WHERE po.projectId = p.id
+          ) as organizations,
+          (
+            SELECT COALESCE(SUM(selfFunding), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalSelfFunding,
+          (
+            SELECT COALESCE(SUM(allocation), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         WHERE p.id = ?
@@ -448,7 +517,10 @@ app.get("/api/projects/:id", (req, res) => {
 });
 
 app.post("/api/projects", (req, res) => {
+  const db = new betterSqlite3(dbPath);
   try {
+    db.exec("BEGIN");
+
     const {
       name,
       type,
@@ -461,17 +533,18 @@ app.post("/api/projects", (req, res) => {
       endDate,
       summary,
       kpis,
-      budget,
+      organizations, // Array of {organizationId, selfFunding, allocation}
     } = req.body;
 
-    const stmt = db.prepare(`
+    // Insert project
+    const insertProject = db.prepare(`
       INSERT INTO projects (
         name, type, organizationId, leader, contact, teamAllocation, 
-        collaborators, startDate, endDate, summary, kpis, budget
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        collaborators, startDate, endDate, summary, kpis
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
+    const projectResult = insertProject.run(
       name,
       type,
       organizationId,
@@ -482,33 +555,96 @@ app.post("/api/projects", (req, res) => {
       startDate,
       endDate,
       summary || null,
-      kpis || null,
-      budget || null
+      kpis || null
     );
 
-    // Get the created project with organization details
+    const projectId = projectResult.lastInsertRowid;
+
+    // Insert project organizations
+    const insertProjectOrg = db.prepare(`
+      INSERT INTO project_organizations (
+        projectId, organizationId, isLeader, selfFunding, allocation
+      ) VALUES (?, ?, ?, ?, ?)
+    `);
+
+    // Insert leader organization first
+    insertProjectOrg.run(
+      projectId,
+      organizationId,
+      1,
+      organizations.find((org) => org.organizationId === organizationId)
+        ?.selfFunding || 0,
+      organizations.find((org) => org.organizationId === organizationId)
+        ?.allocation || 0
+    );
+
+    // Insert other organizations
+    for (const org of organizations) {
+      if (org.organizationId !== organizationId) {
+        insertProjectOrg.run(
+          projectId,
+          org.organizationId,
+          0,
+          org.selfFunding || 0,
+          org.allocation || 0
+        );
+      }
+    }
+
+    // Get the created project with all details
     const project = db
       .prepare(
         `
         SELECT 
           p.*,
           o.name as organization,
-          o.type as organizationType
+          o.type as organizationType,
+          (
+            SELECT json_group_array(
+              json_object(
+                'id', po.id,
+                'organizationId', po.organizationId,
+                'organizationName', o2.name,
+                'organizationType', o2.type,
+                'isLeader', po.isLeader,
+                'selfFunding', po.selfFunding,
+                'allocation', po.allocation
+              )
+            )
+            FROM project_organizations po
+            JOIN organizations o2 ON po.organizationId = o2.id
+            WHERE po.projectId = p.id
+          ) as organizations,
+          (
+            SELECT COALESCE(SUM(selfFunding), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalSelfFunding,
+          (
+            SELECT COALESCE(SUM(allocation), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         WHERE p.id = ?
       `
       )
-      .get(result.lastInsertRowid);
+      .get(projectId);
 
+    db.exec("COMMIT");
     res.status(201).json(project);
   } catch (error) {
+    db.exec("ROLLBACK");
     res.status(500).json({ error: error.message });
   }
 });
 
 app.put("/api/projects/:id", (req, res) => {
+  const db = new betterSqlite3(dbPath);
   try {
+    db.exec("BEGIN");
+
     const {
       name,
       type,
@@ -521,18 +657,19 @@ app.put("/api/projects/:id", (req, res) => {
       endDate,
       summary,
       kpis,
-      budget,
+      organizations, // Array of {organizationId, selfFunding, allocation}
     } = req.body;
 
-    const stmt = db.prepare(`
+    // Update project
+    const updateProject = db.prepare(`
       UPDATE projects SET
         name = ?, type = ?, organizationId = ?, leader = ?, contact = ?,
         teamAllocation = ?, collaborators = ?, startDate = ?, endDate = ?,
-        summary = ?, kpis = ?, budget = ?, updatedAt = CURRENT_TIMESTAMP
+        summary = ?, kpis = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
-    stmt.run(
+    updateProject.run(
       name,
       type,
       organizationId,
@@ -544,18 +681,79 @@ app.put("/api/projects/:id", (req, res) => {
       endDate,
       summary || null,
       kpis || null,
-      budget || null,
       req.params.id
     );
 
-    // Get the updated project with organization details
+    // Delete existing project organizations
+    db.prepare("DELETE FROM project_organizations WHERE projectId = ?").run(
+      req.params.id
+    );
+
+    // Insert project organizations
+    const insertProjectOrg = db.prepare(`
+      INSERT INTO project_organizations (
+        projectId, organizationId, isLeader, selfFunding, allocation
+      ) VALUES (?, ?, ?, ?, ?)
+    `);
+
+    // Insert leader organization first
+    insertProjectOrg.run(
+      req.params.id,
+      organizationId,
+      1,
+      organizations.find((org) => org.organizationId === organizationId)
+        ?.selfFunding || 0,
+      organizations.find((org) => org.organizationId === organizationId)
+        ?.allocation || 0
+    );
+
+    // Insert other organizations
+    for (const org of organizations) {
+      if (org.organizationId !== organizationId) {
+        insertProjectOrg.run(
+          req.params.id,
+          org.organizationId,
+          0,
+          org.selfFunding || 0,
+          org.allocation || 0
+        );
+      }
+    }
+
+    // Get updated project with all details
     const project = db
       .prepare(
         `
         SELECT 
           p.*,
           o.name as organization,
-          o.type as organizationType
+          o.type as organizationType,
+          (
+            SELECT json_group_array(
+              json_object(
+                'id', po.id,
+                'organizationId', po.organizationId,
+                'organizationName', o2.name,
+                'organizationType', o2.type,
+                'isLeader', po.isLeader,
+                'selfFunding', po.selfFunding,
+                'allocation', po.allocation
+              )
+            )
+            FROM project_organizations po
+            JOIN organizations o2 ON po.organizationId = o2.id
+            WHERE po.projectId = p.id
+          ) as organizations,
+          (
+            SELECT COALESCE(SUM(selfFunding), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalSelfFunding,
+          (
+            SELECT COALESCE(SUM(allocation), 0)
+            FROM project_organizations
+            WHERE projectId = p.id
+          ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         WHERE p.id = ?
@@ -563,12 +761,10 @@ app.put("/api/projects/:id", (req, res) => {
       )
       .get(req.params.id);
 
-    if (!project) {
-      return res.status(404).json({ error: "Project not found" });
-    }
-
+    db.exec("COMMIT");
     res.json(project);
   } catch (error) {
+    db.exec("ROLLBACK");
     res.status(500).json({ error: error.message });
   }
 });
@@ -1072,6 +1268,7 @@ app.post("/api/generate-test-data", (req, res) => {
 
     // Clear existing data
     db.prepare("DELETE FROM projects").run();
+    db.prepare("DELETE FROM project_organizations").run();
     db.prepare("DELETE FROM milestones").run();
     db.prepare("DELETE FROM progress").run();
     db.prepare("DELETE FROM gantt").run();
@@ -1083,9 +1280,15 @@ app.post("/api/generate-test-data", (req, res) => {
     const insertProject = db.prepare(`
       INSERT INTO projects (
         name, type, organizationId, leader, contact, teamAllocation,
-        collaborators, startDate, endDate, summary, kpis, budget,
+        collaborators, startDate, endDate, summary, kpis,
         taskDocument
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertProjectOrg = db.prepare(`
+      INSERT INTO project_organizations (
+        projectId, organizationId, isLeader, selfFunding, allocation
+      ) VALUES (?, ?, ?, ?, ?)
     `);
 
     const insertMilestone = db.prepare(`
@@ -1111,12 +1314,12 @@ app.post("/api/generate-test-data", (req, res) => {
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + durationMonths);
 
-      const org =
+      // Select lead organization
+      const leadOrg =
         organizations[Math.floor(Math.random() * organizations.length)];
       const type =
         projectTypes[Math.floor(Math.random() * projectTypes.length)];
       const leader = leaders[Math.floor(Math.random() * leaders.length)];
-      const budget = 50000 + Math.floor(Math.random() * 950000);
 
       // Generate project name
       const prefix =
@@ -1129,7 +1332,7 @@ app.post("/api/generate-test-data", (req, res) => {
       const result = insertProject.run(
         projectName,
         type,
-        org.id,
+        leadOrg.id,
         leader,
         `${leader}@example.com`,
         JSON.stringify({ 研究人员: 3, 技术人员: 2, 管理人员: 1 }),
@@ -1142,11 +1345,38 @@ app.post("/api/generate-test-data", (req, res) => {
           { name: "专利申请", target: "2项" },
           { name: "软件著作权", target: "1项" },
         ]),
-        budget,
         null
       );
 
       const projectId = result.lastInsertRowid;
+
+      // Insert lead organization with funding
+      const leadOrgFunding = 50 + Math.floor(Math.random() * 450);
+      const leadOrgAllocation = 100 + Math.floor(Math.random() * 900);
+      insertProjectOrg.run(
+        projectId,
+        leadOrg.id,
+        1,
+        leadOrgFunding,
+        leadOrgAllocation
+      );
+
+      // Add 1-3 participating organizations
+      const participatingOrgCount = 1 + Math.floor(Math.random() * 3);
+      const availableOrgs = organizations.filter(
+        (org) => org.id !== leadOrg.id
+      );
+
+      for (
+        let j = 0;
+        j < participatingOrgCount && j < availableOrgs.length;
+        j++
+      ) {
+        const org = availableOrgs[j];
+        const selfFunding = 20 + Math.floor(Math.random() * 180);
+        const allocation = 50 + Math.floor(Math.random() * 450);
+        insertProjectOrg.run(projectId, org.id, 0, selfFunding, allocation);
+      }
 
       // Insert 3-5 milestones for each project
       const milestoneCount = 3 + Math.floor(Math.random() * 3);
