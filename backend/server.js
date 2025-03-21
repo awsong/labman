@@ -74,7 +74,7 @@ function initializeDatabase() {
         { name: "科技部", type: "政府部门" },
         { name: "工信部", type: "政府部门" },
         { name: "教育部", type: "政府部门" },
-        { name: "其他", type: "其他" },
+        { name: "本单位", type: "本单位" },
       ];
 
       const insertOrg = db.prepare(
@@ -163,9 +163,17 @@ function initializeDatabase() {
         password TEXT NOT NULL,
         name TEXT NOT NULL,
         role TEXT NOT NULL,
+        idNumber TEXT,                    -- 身份证号
+        position TEXT,                    -- 职务
+        title TEXT,                       -- 职称
+        education TEXT,                   -- 学历
+        major TEXT,                       -- 专业
+        researchArea TEXT,               -- 研究方向
+        organizationId INTEGER,          -- 单位
         theme TEXT DEFAULT '',
         darkMode INTEGER DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (organizationId) REFERENCES organizations (id)
       )
     `);
 
@@ -175,9 +183,32 @@ function initializeDatabase() {
       .get();
 
     if (!adminExists) {
+      // Get the default organization (本单位)
+      const defaultOrg = db
+        .prepare("SELECT id FROM organizations WHERE name = '本单位'")
+        .get();
+
       db.prepare(
-        "INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)"
-      ).run("admin", "password", "Administrator", "admin");
+        `
+        INSERT INTO users (
+          username, password, name, role, 
+          idNumber, position, title, education, 
+          major, researchArea, organizationId
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `
+      ).run(
+        "admin",
+        "password",
+        "Administrator",
+        "admin",
+        null,
+        "系统管理员",
+        null,
+        null,
+        null,
+        null,
+        defaultOrg?.id
+      );
       console.log("Default admin user created");
     }
 
@@ -1162,6 +1193,135 @@ app.post("/api/generate-test-data", (req, res) => {
     });
   } catch (error) {
     console.error("Error generating test data:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user profile
+app.get("/api/users/:id", (req, res) => {
+  try {
+    const user = db
+      .prepare(
+        `
+        SELECT 
+          u.*,
+          o.name as organizationName,
+          o.type as organizationType
+        FROM users u
+        LEFT JOIN organizations o ON u.organizationId = o.id
+        WHERE u.id = ?
+      `
+      )
+      .get(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Remove sensitive information
+    delete user.password;
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user profile
+app.put("/api/users/:id", (req, res) => {
+  try {
+    const {
+      name,
+      idNumber,
+      position,
+      title,
+      education,
+      major,
+      researchArea,
+      organizationId,
+      theme,
+      darkMode,
+    } = req.body;
+
+    const stmt = db.prepare(`
+      UPDATE users SET
+        name = ?,
+        idNumber = ?,
+        position = ?,
+        title = ?,
+        education = ?,
+        major = ?,
+        researchArea = ?,
+        organizationId = ?,
+        theme = ?,
+        darkMode = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(
+      name,
+      idNumber || null,
+      position || null,
+      title || null,
+      education || null,
+      major || null,
+      researchArea || null,
+      organizationId || null,
+      theme || "",
+      darkMode || 0,
+      req.params.id
+    );
+
+    // Get updated user data
+    const user = db
+      .prepare(
+        `
+        SELECT 
+          u.*,
+          o.name as organizationName,
+          o.type as organizationType
+        FROM users u
+        LEFT JOIN organizations o ON u.organizationId = o.id
+        WHERE u.id = ?
+      `
+      )
+      .get(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Remove sensitive information
+    delete user.password;
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user password
+app.put("/api/users/:id/password", (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Verify current password
+    const user = db
+      .prepare("SELECT password FROM users WHERE id = ?")
+      .get(req.params.id);
+
+    if (!user || user.password !== currentPassword) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+
+    // Update password
+    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(
+      newPassword,
+      req.params.id
+    );
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
