@@ -310,6 +310,7 @@ import {
   FolderOpenIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/vue/24/outline";
+import { formatDate } from "@/utils/date";
 
 const projectStore = useProjectStore();
 const router = useRouter();
@@ -328,9 +329,10 @@ const deleting = ref(false);
 const availableYears = computed(() => {
   const years = new Set();
   projectStore.projects.forEach((project) => {
-    years.add(new Date(project.startDate).getFullYear().toString());
+    years.add(new Date(project.startDate).getFullYear());
+    years.add(new Date(project.endDate).getFullYear());
   });
-  return Array.from(years).sort().reverse();
+  return Array.from(years).sort((a, b) => b - a);
 });
 
 const filteredProjects = computed(() => {
@@ -362,11 +364,6 @@ const filteredProjects = computed(() => {
 });
 
 // Helper functions
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("zh-CN");
-};
-
 const getProjectStatus = (project) => {
   const now = new Date();
   const startDate = new Date(project.startDate);

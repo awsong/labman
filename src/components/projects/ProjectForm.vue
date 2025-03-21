@@ -72,14 +72,22 @@
           >
             项目负责人 <span class="text-red-500">*</span>
           </label>
-          <input
+          <select
             id="leader"
             v-model="form.leader"
-            type="text"
             required
             class="form-input"
-            placeholder="请输入项目负责人姓名"
-          />
+            :disabled="!form.organizationId"
+          >
+            <option value="" disabled>请选择项目负责人</option>
+            <option
+              v-for="user in leadOrgUsers"
+              :key="user.id"
+              :value="user.name"
+            >
+              {{ user.name }}
+            </option>
+          </select>
         </div>
 
         <div>
@@ -89,13 +97,21 @@
           >
             联系人
           </label>
-          <input
+          <select
             id="contact"
             v-model="form.contact"
-            type="text"
             class="form-input"
-            placeholder="请输入联系人姓名"
-          />
+            :disabled="!form.organizationId"
+          >
+            <option value="" disabled>请选择联系人</option>
+            <option
+              v-for="user in leadOrgUsers"
+              :key="user.id"
+              :value="user.name"
+            >
+              {{ user.name }}
+            </option>
+          </select>
         </div>
 
         <div>
@@ -453,6 +469,7 @@ const emit = defineEmits(["submit", "cancel", "file-selected"]);
 
 const organizations = ref([]);
 const selectedOrganizations = ref([]);
+const leadOrgUsers = ref([]);
 const form = ref({
   name: "",
   type: "",
@@ -490,8 +507,40 @@ const fetchOrganizations = async () => {
   }
 };
 
-onMounted(() => {
-  fetchOrganizations();
+// 获取牵头单位的人员列表
+const fetchLeadOrgUsers = async (organizationId) => {
+  if (!organizationId) {
+    leadOrgUsers.value = [];
+    form.value.leader = "";
+    form.value.contact = "";
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/organizations/${organizationId}/users`);
+    const data = await response.json();
+    leadOrgUsers.value = data;
+    
+    // 如果当前选择的负责人或联系人不在新的人员列表中，清空选择
+    if (form.value.leader && !leadOrgUsers.value.some(user => user.name === form.value.leader)) {
+      form.value.leader = "";
+    }
+    if (form.value.contact && !leadOrgUsers.value.some(user => user.name === form.value.contact)) {
+      form.value.contact = "";
+    }
+  } catch (error) {
+    console.error('Error fetching organization users:', error);
+    leadOrgUsers.value = [];
+  }
+};
+
+onMounted(async () => {
+  await fetchOrganizations();
+  
+  // 如果是编辑模式，需要获取牵头单位的用户列表
+  if (props.initialData?.organizationId) {
+    await fetchLeadOrgUsers(props.initialData.organizationId);
+  }
 });
 
 // 计算总经费
@@ -577,14 +626,26 @@ watch(() => props.initialData, (newData) => {
         allocation: "0.00"
       }];
     }
+
+    // 如果有牵头单位，获取其用户列表
+    if (newData.organizationId) {
+      fetchLeadOrgUsers(newData.organizationId);
+    }
   }
 }, { immediate: true });
 
 // 监听牵头单位的变化
-watch(() => form.value.organizationId, (newOrgId) => {
+watch(() => form.value.organizationId, async (newOrgId) => {
   if (newOrgId && form.value.organizations.length > 0) {
     // 更新参与单位及经费中的牵头单位
     form.value.organizations[0].organizationId = newOrgId;
+    // 获取牵头单位的人员列表
+    await fetchLeadOrgUsers(newOrgId);
+  } else {
+    // 如果没有选择牵头单位，清空人员列表和选择
+    leadOrgUsers.value = [];
+    form.value.leader = "";
+    form.value.contact = "";
   }
 });
 

@@ -93,8 +93,8 @@ function initializeDatabase() {
         name TEXT NOT NULL,
         type TEXT NOT NULL,
         organizationId INTEGER NOT NULL,
-        leader TEXT NOT NULL,
-        contact TEXT,
+        leaderId INTEGER NOT NULL,
+        contactId INTEGER NOT NULL,
         teamAllocation TEXT,
         collaborators TEXT,
         startDate TEXT NOT NULL,
@@ -104,7 +104,9 @@ function initializeDatabase() {
         taskDocument TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (organizationId) REFERENCES organizations (id)
+        FOREIGN KEY (organizationId) REFERENCES organizations(id),
+        FOREIGN KEY (leaderId) REFERENCES users(id),
+        FOREIGN KEY (contactId) REFERENCES users(id)
       )
     `);
 
@@ -425,6 +427,8 @@ app.get("/api/projects", (req, res) => {
           p.*,
           o.name as organization,
           o.type as organizationType,
+          leader.name as leader,
+          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -453,13 +457,16 @@ app.get("/api/projects", (req, res) => {
           ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
-        ORDER BY p.createdAt DESC
+        JOIN users leader ON p.leaderId = leader.id
+        JOIN users contact ON p.contactId = contact.id
+        ORDER BY p.id DESC
       `
       )
       .all();
 
     res.json(projects);
   } catch (error) {
+    console.error("Error fetching projects:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -473,6 +480,8 @@ app.get("/api/projects/:id", (req, res) => {
           p.*,
           o.name as organization,
           o.type as organizationType,
+          leader.name as leader,
+          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -501,6 +510,8 @@ app.get("/api/projects/:id", (req, res) => {
           ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
+        JOIN users leader ON p.leaderId = leader.id
+        JOIN users contact ON p.contactId = contact.id
         WHERE p.id = ?
       `
       )
@@ -539,7 +550,7 @@ app.post("/api/projects", (req, res) => {
     // Insert project
     const insertProject = db.prepare(`
       INSERT INTO projects (
-        name, type, organizationId, leader, contact, teamAllocation, 
+        name, type, organizationId, leaderId, contactId, teamAllocation,
         collaborators, startDate, endDate, summary, kpis
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
@@ -663,7 +674,7 @@ app.put("/api/projects/:id", (req, res) => {
     // Update project
     const updateProject = db.prepare(`
       UPDATE projects SET
-        name = ?, type = ?, organizationId = ?, leader = ?, contact = ?,
+        name = ?, type = ?, organizationId = ?, leaderId = ?, contactId = ?,
         teamAllocation = ?, collaborators = ?, startDate = ?, endDate = ?,
         summary = ?, kpis = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
@@ -1215,6 +1226,27 @@ app.get("/api/organizations/:id", (req, res) => {
   }
 });
 
+// Get organization users
+app.get("/api/organizations/:id/users", (req, res) => {
+  try {
+    const users = db
+      .prepare(
+        `
+        SELECT 
+          id, name, position, title
+        FROM users
+        WHERE organizationId = ?
+        ORDER BY name
+      `
+      )
+      .all(req.params.id);
+
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Generate test data endpoint
 app.post("/api/generate-test-data", (req, res) => {
   try {
@@ -1253,18 +1285,70 @@ app.post("/api/generate-test-data", (req, res) => {
       "技术改造",
     ];
 
-    const leaders = [
-      "张三",
-      "李四",
-      "王五",
-      "赵六",
-      "钱七",
-      "孙八",
-      "周九",
-      "吴十",
-      "郑一",
-      "王二",
+    // 更真实的人名列表
+    const firstNames = [
+      "王",
+      "李",
+      "张",
+      "刘",
+      "陈",
+      "杨",
+      "黄",
+      "赵",
+      "周",
+      "吴",
+      "徐",
+      "孙",
+      "马",
+      "朱",
+      "胡",
+      "郭",
+      "何",
+      "高",
+      "林",
+      "郑",
     ];
+
+    const lastNames = [
+      "伟",
+      "芳",
+      "娜",
+      "秀英",
+      "敏",
+      "静",
+      "丽",
+      "强",
+      "磊",
+      "洋",
+      "艳",
+      "勇",
+      "军",
+      "杰",
+      "娟",
+      "涛",
+      "超",
+      "明",
+      "霞",
+      "平",
+      "刚",
+      "辉",
+      "玲",
+      "桂英",
+      "丹",
+      "萍",
+      "鹏",
+      "华",
+      "健",
+      "红",
+    ];
+
+    // 生成随机中文姓名
+    const generateChineseName = () => {
+      const firstName =
+        firstNames[Math.floor(Math.random() * firstNames.length)];
+      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      return firstName + lastName;
+    };
 
     // Clear existing data
     db.prepare("DELETE FROM projects").run();
@@ -1272,14 +1356,93 @@ app.post("/api/generate-test-data", (req, res) => {
     db.prepare("DELETE FROM milestones").run();
     db.prepare("DELETE FROM progress").run();
     db.prepare("DELETE FROM gantt").run();
+    db.prepare("DELETE FROM users WHERE username != 'admin'").run();
 
     // Get all organizations
     const organizations = db.prepare("SELECT * FROM organizations").all();
 
+    // 为每个组织创建5-10个测试用户
+    const insertUser = db.prepare(`
+      INSERT INTO users (
+        username, password, name, role, 
+        idNumber, position, title, education, 
+        major, researchArea, organizationId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const titles = [
+      "教授",
+      "副教授",
+      "讲师",
+      "研究员",
+      "高级工程师",
+      "工程师",
+      "技术员",
+    ];
+    const positions = [
+      "院长",
+      "副院长",
+      "系主任",
+      "副主任",
+      "项目负责人",
+      "研究员",
+      "工程师",
+    ];
+    const educations = ["博士", "硕士", "学士"];
+    const majors = [
+      "计算机科学",
+      "软件工程",
+      "人工智能",
+      "信息工程",
+      "电子工程",
+      "通信工程",
+    ];
+    const researchAreas = [
+      "人工智能",
+      "大数据",
+      "云计算",
+      "物联网",
+      "信息安全",
+      "智能制造",
+    ];
+
+    organizations.forEach((org) => {
+      const userCount = 5 + Math.floor(Math.random() * 6); // 5-10个用户
+      for (let i = 0; i < userCount; i++) {
+        const name = generateChineseName();
+        const username = `user_${org.id}_${i + 1}`;
+        const title = titles[Math.floor(Math.random() * titles.length)];
+        const position =
+          positions[Math.floor(Math.random() * positions.length)];
+        const education =
+          educations[Math.floor(Math.random() * educations.length)];
+        const major = majors[Math.floor(Math.random() * majors.length)];
+        const researchArea =
+          researchAreas[Math.floor(Math.random() * researchAreas.length)];
+
+        insertUser.run(
+          username,
+          "password",
+          name,
+          "user",
+          null,
+          position,
+          title,
+          education,
+          major,
+          researchArea,
+          org.id
+        );
+      }
+    });
+
+    // Get all users
+    const users = db.prepare("SELECT * FROM users").all();
+
     // Generate 200 projects
     const insertProject = db.prepare(`
       INSERT INTO projects (
-        name, type, organizationId, leader, contact, teamAllocation,
+        name, type, organizationId, leaderId, contactId, teamAllocation,
         collaborators, startDate, endDate, summary, kpis,
         taskDocument
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1319,7 +1482,15 @@ app.post("/api/generate-test-data", (req, res) => {
         organizations[Math.floor(Math.random() * organizations.length)];
       const type =
         projectTypes[Math.floor(Math.random() * projectTypes.length)];
-      const leader = leaders[Math.floor(Math.random() * leaders.length)];
+
+      // 从牵头单位的用户中选择负责人和联系人
+      const leadOrgUsers = users.filter(
+        (user) => user.organizationId === leadOrg.id
+      );
+      const leader =
+        leadOrgUsers[Math.floor(Math.random() * leadOrgUsers.length)];
+      const contact =
+        leadOrgUsers[Math.floor(Math.random() * leadOrgUsers.length)];
 
       // Generate project name
       const prefix =
@@ -1333,8 +1504,8 @@ app.post("/api/generate-test-data", (req, res) => {
         projectName,
         type,
         leadOrg.id,
-        leader,
-        `${leader}@example.com`,
+        leader.id,
+        contact.id,
         JSON.stringify({ 研究人员: 3, 技术人员: 2, 管理人员: 1 }),
         JSON.stringify(["合作单位A", "合作单位B"]),
         startDate.toISOString().split("T")[0],
