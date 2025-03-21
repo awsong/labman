@@ -103,17 +103,11 @@
             for="budget"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
-            经费预算 (元)
+            经费预算 (万元)
           </label>
-          <input
-            id="budget"
-            v-model.number="form.budget"
-            type="number"
-            min="0"
-            step="0.01"
-            class="form-input"
-            placeholder="请输入项目经费预算"
-          />
+          <div class="form-input bg-gray-100 dark:bg-gray-700">
+            {{ totalFunding.total }}
+          </div>
         </div>
 
         <div>
@@ -171,7 +165,7 @@
             </button>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 单位名称 <span class="text-red-500">*</span>
@@ -199,12 +193,11 @@
               </label>
               <input
                 v-model="org.selfFunding"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 required
-                class="form-input"
-                @input="updateOrganizationFunding(index, 'selfFunding', $event.target.value)"
+                class="form-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                @input="handleFundingInput(index, 'selfFunding', $event.target.value)"
+                @blur="formatFunding(index, 'selfFunding')"
               />
             </div>
 
@@ -214,13 +207,21 @@
               </label>
               <input
                 v-model="org.allocation"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
                 required
-                class="form-input"
-                @input="updateOrganizationFunding(index, 'allocation', $event.target.value)"
+                class="form-input [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                @input="handleFundingInput(index, 'allocation', $event.target.value)"
+                @blur="formatFunding(index, 'allocation')"
               />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                总经费 (万元)
+              </label>
+              <div class="form-input bg-gray-100 dark:bg-gray-700">
+                {{ (parseFloat(org.selfFunding || 0) + parseFloat(org.allocation || 0)).toFixed(2) }}
+              </div>
             </div>
           </div>
         </div>
@@ -517,10 +518,43 @@ const removeOrganization = (index) => {
   form.value.organizations.splice(index, 1);
 };
 
-// 更新组织经费
-const updateOrganizationFunding = (index, field, value) => {
-  const org = form.value.organizations[index];
-  org[field] = parseFloat(value).toFixed(2);
+// 处理经费输入
+const handleFundingInput = (index, field, value) => {
+  // 允许空值
+  if (!value) {
+    form.value.organizations[index][field] = "";
+    return;
+  }
+
+  // 只允许数字和小数点
+  const cleanValue = value.replace(/[^\d.]/g, "");
+  
+  // 确保只有一个小数点
+  const parts = cleanValue.split(".");
+  if (parts.length > 2) {
+    form.value.organizations[index][field] = parts[0] + "." + parts.slice(1).join("");
+  } else {
+    form.value.organizations[index][field] = cleanValue;
+  }
+};
+
+// 格式化经费
+const formatFunding = (index, field) => {
+  const value = form.value.organizations[index][field];
+  
+  // 如果是空值，设置为 0.00
+  if (!value) {
+    form.value.organizations[index][field] = "0.00";
+    return;
+  }
+
+  // 转换为数字并格式化
+  const numValue = parseFloat(value);
+  if (isNaN(numValue) || numValue < 0) {
+    form.value.organizations[index][field] = "0.00";
+  } else {
+    form.value.organizations[index][field] = numValue.toFixed(2);
+  }
 };
 
 // Watch for changes in initialData and update the form
