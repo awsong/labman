@@ -107,6 +107,7 @@
 import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
+import api from "@/utils/api";
 
 const loading = ref(false);
 const users = ref([]);
@@ -133,33 +134,15 @@ const rules = {
   organizationId: [{ required: true, message: "请选择所属单位", trigger: "change" }],
 };
 
-// 检查用户名是否重复
-const checkUsername = async () => {
-  if (!form.value.username) return;
-  
-  try {
-    const response = await fetch(`http://localhost:3000/api/users/check-username?username=${form.value.username}`);
-    if (!response.ok) throw new Error("检查用户名失败");
-    
-    const data = await response.json();
-    if (data.exists) {
-      ElMessage.error("用户名已存在");
-      form.value.username = "";
-    }
-  } catch (error) {
-    ElMessage.error(error.message);
-  }
-};
-
 // 获取人员列表
 const fetchUsers = async () => {
   try {
     loading.value = true;
-    const response = await fetch("http://localhost:3000/api/users");
-    if (!response.ok) throw new Error("获取人员列表失败");
-    users.value = await response.json();
+    const response = await api.get("/users");
+    users.value = response.data;
   } catch (error) {
-    ElMessage.error(error.message);
+    console.error("获取人员列表失败:", error);
+    ElMessage.error("获取人员列表失败");
   } finally {
     loading.value = false;
   }
@@ -168,11 +151,26 @@ const fetchUsers = async () => {
 // 获取单位列表
 const fetchOrganizations = async () => {
   try {
-    const response = await fetch("http://localhost:3000/api/organizations");
-    if (!response.ok) throw new Error("获取单位列表失败");
-    organizations.value = await response.json();
+    const response = await api.get("/organizations");
+    organizations.value = response.data;
   } catch (error) {
-    ElMessage.error(error.message);
+    console.error("获取单位列表失败:", error);
+    ElMessage.error("获取单位列表失败");
+  }
+};
+
+// 检查用户名是否重复
+const checkUsername = async () => {
+  if (!form.value.username) return;
+  try {
+    const response = await api.get(`/users/check-username?username=${form.value.username}`);
+    if (response.exists) {
+      ElMessage.error("用户名已存在");
+      form.value.username = "";
+    }
+  } catch (error) {
+    console.error("检查用户名失败:", error);
+    ElMessage.error("检查用户名失败");
   }
 };
 
@@ -203,30 +201,16 @@ const handleEdit = (row) => {
 // 删除人员
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除人员"${row.name}"吗？`,
-      "警告",
-      {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      }
-    );
-
-    const response = await fetch(
-      `http://localhost:3000/api/users/${row.id}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (!response.ok) throw new Error("删除人员失败");
-
+    await ElMessageBox.confirm("确定要删除该人员吗？", "提示", {
+      type: "warning",
+    });
+    await api.delete(`/users/${row.id}`);
     ElMessage.success("删除成功");
     fetchUsers();
   } catch (error) {
     if (error !== "cancel") {
-      ElMessage.error(error.message);
+      console.error("删除用户失败:", error);
+      ElMessage.error("删除用户失败");
     }
   }
 };
@@ -234,31 +218,24 @@ const handleDelete = async (row) => {
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return;
-
-  try {
-    await formRef.value.validate();
-
-    const url = form.value.id
-      ? `http://localhost:3000/api/users/${form.value.id}`
-      : "http://localhost:3000/api/users";
-    const method = form.value.id ? "PUT" : "POST";
-
-    const response = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(form.value),
-    });
-
-    if (!response.ok) throw new Error("保存人员失败");
-
-    ElMessage.success("保存成功");
-    dialogVisible.value = false;
-    fetchUsers();
-  } catch (error) {
-    ElMessage.error(error.message);
-  }
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (form.value.id) {
+          await api.put(`/users/${form.value.id}`, form.value);
+          ElMessage.success("更新成功");
+        } else {
+          await api.post("/users", form.value);
+          ElMessage.success("添加成功");
+        }
+        dialogVisible.value = false;
+        fetchUsers();
+      } catch (error) {
+        console.error("保存用户失败:", error);
+        ElMessage.error("保存用户失败");
+      }
+    }
+  });
 };
 
 onMounted(() => {

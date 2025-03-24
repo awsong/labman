@@ -67,6 +67,7 @@
 import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
+import api from "@/utils/api";
 import { formatDate } from "@/utils/date";
 
 const loading = ref(false);
@@ -88,11 +89,11 @@ const rules = {
 const fetchOrganizations = async () => {
   try {
     loading.value = true;
-    const response = await fetch("http://localhost:3000/api/organizations");
-    if (!response.ok) throw new Error("获取单位列表失败");
-    organizations.value = await response.json();
+    const response = await api.get("/organizations");
+    organizations.value = response.data;
   } catch (error) {
-    ElMessage.error(error.message);
+    console.error("获取单位列表失败:", error);
+    ElMessage.error("获取单位列表失败");
   } finally {
     loading.value = false;
   }
@@ -118,30 +119,16 @@ const handleEdit = (row) => {
 // 删除单位
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm(
-      `确定要删除单位"${row.name}"吗？`,
-      "警告",
-      {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      }
-    );
-
-    const response = await fetch(
-      `http://localhost:3000/api/organizations/${row.id}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (!response.ok) throw new Error("删除单位失败");
-
+    await ElMessageBox.confirm("确定要删除该单位吗？", "提示", {
+      type: "warning",
+    });
+    await api.delete(`/organizations/${row.id}`);
     ElMessage.success("删除成功");
     fetchOrganizations();
   } catch (error) {
     if (error !== "cancel") {
-      ElMessage.error(error.message);
+      console.error("删除单位失败:", error);
+      ElMessage.error("删除单位失败");
     }
   }
 };
@@ -149,31 +136,24 @@ const handleDelete = async (row) => {
 // 提交表单
 const handleSubmit = async () => {
   if (!formRef.value) return;
-
-  try {
-    await formRef.value.validate();
-
-    const url = form.value.id
-      ? `http://localhost:3000/api/organizations/${form.value.id}`
-      : "http://localhost:3000/api/organizations";
-    const method = form.value.id ? "PUT" : "POST";
-
-    const response = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(form.value),
-    });
-
-    if (!response.ok) throw new Error("保存单位失败");
-
-    ElMessage.success("保存成功");
-    dialogVisible.value = false;
-    fetchOrganizations();
-  } catch (error) {
-    ElMessage.error(error.message);
-  }
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (form.value.id) {
+          await api.put(`/organizations/${form.value.id}`, form.value);
+          ElMessage.success("更新成功");
+        } else {
+          await api.post("/organizations", form.value);
+          ElMessage.success("添加成功");
+        }
+        dialogVisible.value = false;
+        fetchOrganizations();
+      } catch (error) {
+        console.error("保存单位失败:", error);
+        ElMessage.error("保存单位失败");
+      }
+    }
+  });
 };
 
 onMounted(() => {

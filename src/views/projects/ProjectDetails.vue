@@ -955,9 +955,8 @@ const getDocumentUrl = (url) => {
   if (!url) return '';
   // 将/uploads/开头的路径转换为指向后端服务器的URL
   if (url.startsWith('/uploads/')) {
-    return `http://localhost:3000${url}`;
+    return `${import.meta.env.VITE_BASE_URL}${url}`;
   }
-  return url;
 };
 
 // Load project data on component mount
