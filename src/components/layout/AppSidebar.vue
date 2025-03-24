@@ -98,6 +98,30 @@
             <cog-icon class="h-5 w-5 flex-shrink-0 mr-2" />
             <span class="truncate">系统设置</span>
           </router-link>
+
+          <router-link
+            to="/settings/organizations"
+            class="flex items-center rounded-lg px-2 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            :class="{
+              'bg-primary-50 text-primary-700 dark:bg-gray-700':
+                isActive('/settings/organizations'),
+            }"
+          >
+            <building-office-icon class="h-5 w-5 flex-shrink-0 mr-2" />
+            <span class="truncate">单位管理</span>
+          </router-link>
+
+          <router-link
+            to="/settings/users"
+            class="flex items-center rounded-lg px-2 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+            :class="{
+              'bg-primary-50 text-primary-700 dark:bg-gray-700':
+                isActive('/settings/users'),
+            }"
+          >
+            <users-icon class="h-5 w-5 flex-shrink-0 mr-2" />
+            <span class="truncate">人员管理</span>
+          </router-link>
         </div>
       </nav>
     </div>
@@ -114,6 +138,8 @@ import {
   ChartBarIcon,
   ChartPieIcon,
   CogIcon,
+  BuildingOfficeIcon,
+  UsersIcon,
 } from "@heroicons/vue/24/outline";
 
 const route = useRoute();

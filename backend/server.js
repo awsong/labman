@@ -1400,6 +1400,140 @@ app.put("/api/users/:id/password", (req, res) => {
   }
 });
 
+// 获取所有人员列表
+app.get("/api/users", (req, res) => {
+  try {
+    const users = db
+      .prepare(
+        `SELECT u.*, o.name as organizationName 
+         FROM users u 
+         LEFT JOIN organizations o ON u.organizationId = o.id 
+         ORDER BY u.name`
+      )
+      .all();
+    res.json(users);
+  } catch (error) {
+    console.error("获取用户列表失败:", error);
+    res.status(500).json({ error: "获取用户列表失败" });
+  }
+});
+
+// 检查用户名是否重复
+app.get("/api/users/check-username", (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) {
+      return res.status(400).json({ error: "用户名不能为空" });
+    }
+
+    const existingUser = db
+      .prepare("SELECT id FROM users WHERE username = ?")
+      .get(username);
+
+    res.json({ exists: !!existingUser });
+  } catch (error) {
+    console.error("检查用户名失败:", error);
+    res.status(500).json({ error: "检查用户名失败" });
+  }
+});
+
+// 创建用户
+app.post("/api/users", (req, res) => {
+  try {
+    const {
+      name,
+      username,
+      idNumber,
+      organizationId,
+      position,
+      title,
+      education,
+      major,
+      researchArea,
+    } = req.body;
+
+    // 检查用户名是否已存在
+    const existingUser = db
+      .prepare("SELECT id FROM users WHERE username = ?")
+      .get(username);
+    if (existingUser) {
+      return res.status(400).json({ error: "用户名已存在" });
+    }
+
+    const result = db
+      .prepare(
+        `INSERT INTO users (name, username, idNumber, organizationId, position, title, education, major, researchArea) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        name,
+        username,
+        idNumber,
+        organizationId,
+        position,
+        title,
+        education,
+        major,
+        researchArea
+      );
+
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    console.error("创建用户失败:", error);
+    res.status(500).json({ error: "创建用户失败" });
+  }
+});
+
+// 更新人员信息
+app.put("/api/users/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      idNumber,
+      organizationId,
+      position,
+      title,
+      education,
+      major,
+      researchArea,
+    } = req.body;
+
+    db.prepare(
+      `UPDATE users 
+       SET name = ?, idNumber = ?, organizationId = ?, position = ?, title = ?, education = ?, major = ?, researchArea = ?
+       WHERE id = ?`
+    ).run(
+      name,
+      idNumber,
+      organizationId,
+      position,
+      title,
+      education,
+      major,
+      researchArea,
+      id
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("更新用户失败:", error);
+    res.status(500).json({ error: "更新用户失败" });
+  }
+});
+
+// 删除人员
+app.delete("/api/users/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("删除用户失败:", error);
+    res.status(500).json({ error: "删除用户失败" });
+  }
+});
+
 // 在所有API路由之后，提供前端静态文件
 // 仅在生产环境中启用
 if (process.env.NODE_ENV === "production") {

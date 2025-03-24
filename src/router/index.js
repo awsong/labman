@@ -14,6 +14,8 @@ const MilestoneDetails = () =>
 const ProgressTracker = () => import("@/views/progress/ProgressTracker.vue");
 const Statistics = () => import("@/views/statistics/Statistics.vue");
 const Settings = () => import("@/views/Settings.vue");
+const OrganizationList = () => import("@/views/settings/OrganizationList.vue");
+const UserList = () => import("@/views/settings/UserList.vue");
 const NotFound = () => import("@/views/NotFound.vue");
 
 const routes = [
@@ -88,6 +90,18 @@ const routes = [
     path: "/settings",
     name: "Settings",
     component: Settings,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/settings/organizations",
+    name: "Organizations",
+    component: OrganizationList,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/settings/users",
+    name: "Users",
+    component: UserList,
     meta: { requiresAuth: true },
   },
   {
