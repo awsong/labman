@@ -93,21 +93,18 @@ function initializeDatabase() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         type TEXT NOT NULL,
-        organizationId INTEGER NOT NULL,
-        leaderId INTEGER NOT NULL,
-        contactId INTEGER NOT NULL,
-        teamAllocation TEXT,
-        collaborators TEXT,
+        status TEXT NOT NULL,
         startDate TEXT NOT NULL,
         endDate TEXT NOT NULL,
-        summary TEXT,
-        kpis TEXT,
-        taskDocument TEXT,
+        budget REAL,
+        description TEXT,
+        expectedOutcomes TEXT,
+        organizationId INTEGER NOT NULL,
+        leaderId INTEGER NOT NULL,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (organizationId) REFERENCES organizations(id),
-        FOREIGN KEY (leaderId) REFERENCES users(id),
-        FOREIGN KEY (contactId) REFERENCES users(id)
+        FOREIGN KEY (leaderId) REFERENCES users(id)
       )
     `);
 
@@ -121,7 +118,6 @@ function initializeDatabase() {
         selfFunding DECIMAL(10,2) NOT NULL DEFAULT 0,
         allocation DECIMAL(10,2) NOT NULL DEFAULT 0,
         leader TEXT NOT NULL,
-        contact TEXT NOT NULL,
         participants TEXT,
         expectedOutcomes TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -191,8 +187,11 @@ function initializeDatabase() {
         title TEXT,                       -- 职称
         education TEXT,                   -- 学历
         major TEXT,                       -- 专业
-        researchArea TEXT,               -- 研究方向
-        organizationId INTEGER,          -- 单位
+        researchArea TEXT,                -- 研究方向
+        organizationId INTEGER,           -- 单位
+        skills TEXT,                      -- 专业技能
+        responsibilities TEXT,            -- 职责
+        projectRole TEXT,                 -- 项目角色
         theme TEXT DEFAULT '',
         darkMode INTEGER DEFAULT 0,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -433,7 +432,6 @@ app.get("/api/projects", (req, res) => {
           o.name as organization,
           o.type as organizationType,
           leader.name as leader,
-          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -443,7 +441,10 @@ app.get("/api/projects", (req, res) => {
                 'organizationType', o2.type,
                 'isLeader', po.isLeader,
                 'selfFunding', po.selfFunding,
-                'allocation', po.allocation
+                'allocation', po.allocation,
+                'leader', po.leader,
+                'participants', po.participants,
+                'expectedOutcomes', po.expectedOutcomes
               )
             )
             FROM project_organizations po
@@ -463,7 +464,6 @@ app.get("/api/projects", (req, res) => {
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         JOIN users leader ON p.leaderId = leader.id
-        JOIN users contact ON p.contactId = contact.id
         ORDER BY p.id DESC
       `
       )
@@ -486,7 +486,6 @@ app.get("/api/projects/:id", (req, res) => {
           o.name as organization,
           o.type as organizationType,
           leader.name as leader,
-          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -496,7 +495,10 @@ app.get("/api/projects/:id", (req, res) => {
                 'organizationType', o2.type,
                 'isLeader', po.isLeader,
                 'selfFunding', po.selfFunding,
-                'allocation', po.allocation
+                'allocation', po.allocation,
+                'leader', po.leader,
+                'participants', po.participants,
+                'expectedOutcomes', po.expectedOutcomes
               )
             )
             FROM project_organizations po
@@ -516,7 +518,6 @@ app.get("/api/projects/:id", (req, res) => {
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         JOIN users leader ON p.leaderId = leader.id
-        JOIN users contact ON p.contactId = contact.id
         WHERE p.id = ?
       `
       )
@@ -540,16 +541,15 @@ app.post("/api/projects", (req, res) => {
     const {
       name,
       type,
+      status,
       organizationId,
       leader,
-      contact,
-      teamAllocation,
-      collaborators,
       startDate,
       endDate,
-      summary,
-      kpis,
-      organizations, // Array of {organizationId, selfFunding, allocation, leader, contact, participants, expectedOutcomes}
+      budget,
+      description,
+      expectedOutcomes,
+      organizations, // Array of {organizationId, selfFunding, allocation, leader, participants, expectedOutcomes}
     } = req.body;
 
     // 根据名字查找用户 ID
@@ -558,35 +558,31 @@ app.post("/api/projects", (req, res) => {
     `);
 
     const leaderId = getUserIdByName.get(leader, organizationId)?.id;
-    const contactId = getUserIdByName.get(contact, organizationId)?.id;
 
     if (!leaderId) {
       throw new Error(`找不到负责人: ${leader}`);
-    }
-    if (!contactId) {
-      throw new Error(`找不到联系人: ${contact}`);
     }
 
     // Insert project
     const insertProject = db.prepare(`
       INSERT INTO projects (
-        name, type, organizationId, leaderId, contactId, teamAllocation,
-        collaborators, startDate, endDate, summary, kpis
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        name, type, status, startDate, endDate,
+        budget, description, expectedOutcomes,
+        organizationId, leaderId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const projectResult = insertProject.run(
       name,
       type,
-      organizationId,
-      leaderId,
-      contactId,
-      teamAllocation || null,
-      collaborators || null,
+      status || "进行中",
       startDate,
       endDate,
-      summary || null,
-      kpis || null
+      budget || null,
+      description || null,
+      expectedOutcomes ? JSON.stringify(expectedOutcomes) : null,
+      organizationId,
+      leaderId
     );
 
     const projectId = projectResult.lastInsertRowid;
@@ -595,8 +591,8 @@ app.post("/api/projects", (req, res) => {
     const insertProjectOrg = db.prepare(`
       INSERT INTO project_organizations (
         projectId, organizationId, isLeader, selfFunding, allocation,
-        leader, contact, participants, expectedOutcomes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        leader, participants, expectedOutcomes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Insert leader organization first
@@ -614,7 +610,6 @@ app.post("/api/projects", (req, res) => {
       leaderOrg?.selfFunding || 0,
       leaderOrg?.allocation || 0,
       leaderOrg?.leader || leader,
-      leaderOrg?.contact || contact,
       JSON.stringify(leaderOrg?.participants || []),
       JSON.stringify(
         leaderOrg?.expectedOutcomes || {
@@ -639,8 +634,7 @@ app.post("/api/projects", (req, res) => {
           0,
           org.selfFunding || 0,
           org.allocation || 0,
-          org.leader,
-          org.contact,
+          org.leader || "",
           JSON.stringify(org.participants || []),
           JSON.stringify(
             org.expectedOutcomes || {
@@ -667,7 +661,6 @@ app.post("/api/projects", (req, res) => {
           o.name as organization,
           o.type as organizationType,
           leader.name as leader,
-          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -679,7 +672,6 @@ app.post("/api/projects", (req, res) => {
                 'selfFunding', po.selfFunding,
                 'allocation', po.allocation,
                 'leader', po.leader,
-                'contact', po.contact,
                 'participants', po.participants,
                 'expectedOutcomes', po.expectedOutcomes
               )
@@ -701,7 +693,6 @@ app.post("/api/projects", (req, res) => {
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         JOIN users leader ON p.leaderId = leader.id
-        JOIN users contact ON p.contactId = contact.id
         WHERE p.id = ?
       `
       )
@@ -728,51 +719,45 @@ app.put("/api/projects/:id", (req, res) => {
     const {
       name,
       type,
+      status,
       organizationId,
       leaderId,
-      contactId,
-      teamAllocation,
-      collaborators,
       startDate,
       endDate,
-      summary,
-      kpis,
-      organizations, // Array of {organizationId, selfFunding, allocation, leader, contact, participants, expectedOutcomes}
+      budget,
+      description,
+      expectedOutcomes,
+      organizations, // Array of {organizationId, selfFunding, allocation, leader, participants, expectedOutcomes}
     } = req.body;
 
-    // Verify that the users exist
+    // Verify that the leader exists
     const verifyUser = db.prepare(`SELECT id FROM users WHERE id = ?`);
     const leaderExists = verifyUser.get(leaderId);
-    const contactExists = verifyUser.get(contactId);
 
     if (!leaderExists) {
       throw new Error(`找不到负责人ID: ${leaderId}`);
-    }
-    if (!contactExists) {
-      throw new Error(`找不到联系人ID: ${contactId}`);
     }
 
     // Update project
     const updateProject = db.prepare(`
       UPDATE projects SET
-        name = ?, type = ?, organizationId = ?, leaderId = ?, contactId = ?,
-        teamAllocation = ?, collaborators = ?, startDate = ?, endDate = ?,
-        summary = ?, kpis = ?, updatedAt = CURRENT_TIMESTAMP
+        name = ?, type = ?, status = ?, organizationId = ?, leaderId = ?,
+        startDate = ?, endDate = ?, budget = ?, description = ?, expectedOutcomes = ?,
+        updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
     updateProject.run(
       name,
       type,
+      status || "进行中",
       organizationId,
       leaderId,
-      contactId,
-      teamAllocation || null,
-      collaborators || null,
       startDate,
       endDate,
-      summary || null,
-      kpis || null,
+      budget || null,
+      description || null,
+      expectedOutcomes ? JSON.stringify(expectedOutcomes) : null,
       req.params.id
     );
 
@@ -785,8 +770,8 @@ app.put("/api/projects/:id", (req, res) => {
     const insertProjectOrg = db.prepare(`
       INSERT INTO project_organizations (
         projectId, organizationId, isLeader, selfFunding, allocation,
-        leader, contact, participants, expectedOutcomes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        leader, participants, expectedOutcomes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Insert leader organization first
@@ -804,7 +789,6 @@ app.put("/api/projects/:id", (req, res) => {
       leaderOrg?.selfFunding || 0,
       leaderOrg?.allocation || 0,
       leaderOrg?.leader || "",
-      leaderOrg?.contact || "",
       JSON.stringify(leaderOrg?.participants || []),
       JSON.stringify(
         leaderOrg?.expectedOutcomes || {
@@ -830,7 +814,6 @@ app.put("/api/projects/:id", (req, res) => {
           org.selfFunding || 0,
           org.allocation || 0,
           org.leader || "",
-          org.contact || "",
           JSON.stringify(org.participants || []),
           JSON.stringify(
             org.expectedOutcomes || {
@@ -857,7 +840,6 @@ app.put("/api/projects/:id", (req, res) => {
           o.name as organization,
           o.type as organizationType,
           leader.name as leader,
-          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -869,7 +851,6 @@ app.put("/api/projects/:id", (req, res) => {
                 'selfFunding', po.selfFunding,
                 'allocation', po.allocation,
                 'leader', po.leader,
-                'contact', po.contact,
                 'participants', po.participants,
                 'expectedOutcomes', po.expectedOutcomes
               )
@@ -891,7 +872,6 @@ app.put("/api/projects/:id", (req, res) => {
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
         JOIN users leader ON p.leaderId = leader.id
-        JOIN users contact ON p.contactId = contact.id
         WHERE p.id = ?
       `
       )

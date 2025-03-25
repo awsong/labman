@@ -147,7 +147,7 @@
         <div class="pt-4">
           <!-- Overview Tab -->
           <div v-if="currentTab === 'overview'">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 gap-6">
               <div>
                 <h3
                   class="text-md font-medium text-gray-900 dark:text-white mb-2"
@@ -167,14 +167,129 @@
                 <h3
                   class="text-md font-medium text-gray-900 dark:text-white mb-2"
                 >
-                  考核指标
+                  预期成果汇总
                 </h3>
-                <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
-                  <p
-                    class="text-gray-700 dark:text-gray-300 whitespace-pre-line"
-                  >
-                    {{ project.kpis || "暂无考核指标" }}
-                  </p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <!-- 软件 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-blue-100 dark:bg-blue-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">软件</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-blue-600 dark:text-blue-400">{{ getTotalOutcome('software') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 硬件 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-green-100 dark:bg-green-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">硬件</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-green-600 dark:text-green-400">{{ getTotalOutcome('hardware') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 论文 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-purple-100 dark:bg-purple-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-600 dark:text-purple-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">论文</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-purple-600 dark:text-purple-400">{{ getTotalOutcome('papers') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 专利 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-yellow-100 dark:bg-yellow-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-600 dark:text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 2a1 1 0 00-1 1v1.323l-3.954 1.582A1 1 0 004 6.32V16a1 1 0 001.029.976l5-1V17a1 1 0 102 0v-1.024l5 1A1 1 0 0018 16V6.32a1.001 1.001 0 00-.046-.343 1 1 0 00-.58-.514L13.42 3.582A1 1 0 0013 3.32V3a1 1 0 00-1-1h-2z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">专利</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-yellow-600 dark:text-yellow-400">{{ getTotalOutcome('patents') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 软件著作权 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-indigo-100 dark:bg-indigo-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 dark:text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm3 1h6v4H7V5zm8 8v2h1v-2h-1zm-2-6H7v4h6V7zm2 0h1v4h-1V7zm1-2V4h-1v1h1zm-1 10h1v2h-1v-2zM9 17v-2H7v2h2z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">软件著作权</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-indigo-600 dark:text-indigo-400">{{ getTotalOutcome('copyrights') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 标准 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-red-100 dark:bg-red-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">标准</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-red-600 dark:text-red-400">{{ getTotalOutcome('standards') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 技术报告 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-pink-100 dark:bg-pink-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-pink-600 dark:text-pink-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">技术报告</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-pink-600 dark:text-pink-400">{{ getTotalOutcome('reports') }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 应用示范证明 -->
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center">
+                        <div class="rounded-full p-2 bg-orange-100 dark:bg-orange-900/30">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-600 dark:text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                            <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                          </svg>
+                        </div>
+                        <h4 class="ml-3 text-sm font-medium text-gray-900 dark:text-white">应用示范</h4>
+                      </div>
+                      <span class="text-lg font-semibold text-orange-600 dark:text-orange-400">{{ getTotalOutcome('demonstrations') }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -275,6 +390,76 @@
               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
               class="hidden"
             />
+          </div>
+
+          <!-- Organizations Tab -->
+          <div v-if="currentTab === 'organizations'">
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                  <tr>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      单位名称
+                    </th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      单位类型
+                    </th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      负责人
+                    </th>
+                    <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      参与人员
+                    </th>
+                    <th scope="col" class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      自筹经费
+                    </th>
+                    <th scope="col" class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      拨款经费
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+                  <tr v-for="org in getProjectOrganizations()" :key="org.organizationId" :class="{ 'bg-primary-50 dark:bg-primary-900/20': org.isLeader }">
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {{ getOrgName(org.organizationId) }}
+                      <span v-if="org.isLeader" class="ml-2 text-xs text-primary-600 dark:text-primary-400">(牵头单位)</span>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {{ org.organizationType }}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                      {{ org.leader }}
+                    </td>
+                    <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                      <div class="flex flex-wrap gap-1">
+                        <span v-for="participant in getParticipants(org)" :key="participant" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                          {{ participant }}
+                        </span>
+                      </div>
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                      {{ formatNumber(org.selfFunding) }}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                      {{ formatNumber(org.allocation) }}
+                    </td>
+                  </tr>
+                </tbody>
+                <tfoot class="bg-gray-50 dark:bg-gray-800/50">
+                  <tr>
+                    <td colspan="4" class="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white">
+                      总计
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                      {{ formatNumber(getTotalSelfFunding()) }}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                      {{ formatNumber(getTotalAllocation()) }}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -649,7 +834,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from "vue";
+import { ref, computed, onMounted, reactive, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   ArrowPathIcon,
@@ -692,10 +877,40 @@ const tabs = [
   { name: "overview", label: "项目概览" },
   { name: "team", label: "团队与合作" },
   { name: "document", label: "项目任务书" },
+  { name: "organizations", label: "项目组织" },
 ];
 
 // Project computed property
-const project = computed(() => projectStore.currentProject || {});
+const project = computed(() => {
+  const currentProject = projectStore.currentProject;
+  console.log('Computing project value:', currentProject);
+  
+  if (!currentProject) {
+    console.warn('No current project data available');
+    return {};
+  }
+
+  // 确保 organizations 是数组
+  if (currentProject.organizations) {
+    try {
+      currentProject.organizations = typeof currentProject.organizations === 'string'
+        ? JSON.parse(currentProject.organizations)
+        : currentProject.organizations;
+        
+      if (!Array.isArray(currentProject.organizations)) {
+        console.error('Project organizations is not an array:', currentProject.organizations);
+        currentProject.organizations = [];
+      }
+    } catch (error) {
+      console.error('Error parsing project organizations:', error);
+      currentProject.organizations = [];
+    }
+  } else {
+    currentProject.organizations = [];
+  }
+
+  return currentProject;
+});
 
 // Milestone form
 const milestoneForm = reactive({
@@ -959,18 +1174,219 @@ const getDocumentUrl = (url) => {
   }
 };
 
+// Add these functions in the script section before the onMounted
+const getOrgName = (orgId) => {
+  if (!orgId) {
+    console.warn('getOrgName: No organization ID provided');
+    return '未知单位';
+  }
+
+  // 确保 organizations.value 是有效的
+  if (!organizations.value || !Array.isArray(organizations.value)) {
+    console.warn('getOrgName: Organizations not properly initialized');
+    return '未知单位';
+  }
+
+  // 转换为数字进行比较
+  const numericOrgId = Number(orgId);
+  if (isNaN(numericOrgId)) {
+    console.warn('getOrgName: Invalid organization ID:', orgId);
+    return '未知单位';
+  }
+
+  const org = organizations.value.find(org => Number(org.id) === numericOrgId);
+  
+  if (!org) {
+    console.warn(`getOrgName: Organization not found for ID: ${orgId}`);
+    return '未知单位';
+  }
+
+  return org.name || '未知单位';
+};
+
+const getExpectedOutcome = (org, type) => {
+  try {
+    let outcomes = org.expectedOutcomes;
+    
+    // 如果是字符串，尝试解析 JSON
+    if (typeof outcomes === 'string') {
+      outcomes = JSON.parse(outcomes);
+    }
+    
+    if (typeof outcomes !== 'object' || outcomes === null) {
+      console.error('Invalid expectedOutcomes format:', outcomes);
+      return 0;
+    }
+    
+    return Number(outcomes[type]) || 0;
+  } catch (error) {
+    console.error('Error parsing expected outcomes:', error);
+    return 0;
+  }
+};
+
+const getParticipants = (org) => {
+  try {
+    let participants = org.participants;
+    
+    // 如果是字符串，尝试解析 JSON
+    if (typeof participants === 'string') {
+      participants = JSON.parse(participants);
+    }
+    
+    if (!Array.isArray(participants)) {
+      console.error('Invalid participants format:', participants);
+      return [];
+    }
+    
+    return participants;
+  } catch (error) {
+    console.error('Error parsing participants:', error);
+    return [];
+  }
+};
+
+const getTotalOutcome = (type) => {
+  try {
+    const organizations = project.value?.organizations;
+    if (!organizations) return 0;
+    
+    // 如果是字符串，尝试解析 JSON
+    let orgs = organizations;
+    if (typeof organizations === 'string') {
+      orgs = JSON.parse(organizations);
+    }
+    
+    if (!Array.isArray(orgs)) {
+      console.error('Invalid organizations format:', orgs);
+      return 0;
+    }
+    
+    return orgs.reduce((sum, org) => {
+      return sum + getExpectedOutcome(org, type);
+    }, 0);
+  } catch (error) {
+    console.error('Error calculating total outcome:', error);
+    return 0;
+  }
+};
+
+const organizations = ref([]);
+
+const getProjectOrganizations = () => {
+  const projectOrgs = project.value?.organizations;
+  console.log('Getting project organizations:', projectOrgs);
+
+  if (!projectOrgs) {
+    console.warn('No project organizations data');
+    return [];
+  }
+
+  try {
+    // 如果是字符串，尝试解析 JSON
+    let orgs = projectOrgs;
+    if (typeof projectOrgs === 'string') {
+      orgs = JSON.parse(projectOrgs);
+    }
+
+    if (!Array.isArray(orgs)) {
+      console.error('Invalid organizations format:', orgs);
+      return [];
+    }
+
+    // 确保每个组织的数据都是有效的
+    return orgs.map(org => ({
+      ...org,
+      organizationId: Number(org.organizationId),
+      selfFunding: Number(org.selfFunding) || 0,
+      allocation: Number(org.allocation) || 0,
+      participants: getParticipants(org),
+      expectedOutcomes: parseExpectedOutcomes(org.expectedOutcomes)
+    }));
+  } catch (error) {
+    console.error('Error processing project organizations:', error);
+    return [];
+  }
+};
+
+const parseExpectedOutcomes = (outcomes) => {
+  try {
+    if (typeof outcomes === 'string') {
+      outcomes = JSON.parse(outcomes);
+    }
+    
+    if (typeof outcomes !== 'object' || outcomes === null) {
+      console.warn('Invalid expected outcomes format:', outcomes);
+      return {
+        software: 0,
+        hardware: 0,
+        papers: 0,
+        patents: 0,
+        copyrights: 0,
+        standards: 0,
+        reports: 0,
+        demonstrations: 0
+      };
+    }
+    
+    return outcomes;
+  } catch (error) {
+    console.error('Error parsing expected outcomes:', error);
+    return {
+      software: 0,
+      hardware: 0,
+      papers: 0,
+      patents: 0,
+      copyrights: 0,
+      standards: 0,
+      reports: 0,
+      demonstrations: 0
+    };
+  }
+};
+
+const getTotalSelfFunding = () => {
+  const orgs = getProjectOrganizations();
+  return orgs.reduce((sum, org) => sum + (Number(org.selfFunding) || 0), 0);
+};
+
+const getTotalAllocation = () => {
+  const orgs = getProjectOrganizations();
+  return orgs.reduce((sum, org) => sum + (Number(org.allocation) || 0), 0);
+};
+
 // Load project data on component mount
 onMounted(async () => {
   loading.value = true;
   error.value = null;
 
   try {
-    // Load project details
+    // 先获取组织列表
+    try {
+      const response = await fetch('/api/organizations');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch organizations: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log('Loaded organizations:', data);
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Organizations data is not an array');
+      }
+      
+      organizations.value = data;
+    } catch (err) {
+      console.error('Error fetching organizations:', err);
+      error.value = "加载组织列表失败：" + (err.message || "未知错误");
+      organizations.value = [];
+    }
+
+    // 然后加载项目详情
     const projectData = await projectStore.fetchProjectById(id.value);
+    console.log('Loaded project data:', projectData);
 
     if (!projectData) {
-      error.value = "未找到项目";
-      return;
+      throw new Error("未找到项目");
     }
 
     // Load milestones
@@ -982,6 +1398,16 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+// 添加 watch 以监听组织数据变化
+watch(organizations, (newOrgs) => {
+  console.log('Organizations updated:', newOrgs);
+}, { deep: true });
+
+// 添加 watch 以监听项目数据变化
+watch(() => project.value, (newProject) => {
+  console.log('Project updated:', newProject);
+}, { deep: true });
 </script>
 
 <style scoped>

@@ -987,16 +987,13 @@ const submitForm = async (e) => {
       return;
     }
 
-    // 获取牵头单位的负责人和联系人ID
-    const leaderUser = leadOrgUsers.value.find(user => user.name === form.value.leader);
-    const contactUser = leadOrgUsers.value.find(user => user.name === form.value.contact);
+    // 获取牵头单位的负责人用户信息
+    const leaderUser = leadOrgUsers.value.find(
+      (user) => user.name === form.value.leader
+    );
 
     if (!leaderUser) {
       ElMessage.error(`找不到负责人: ${form.value.leader}`);
-      return;
-    }
-    if (!contactUser) {
-      ElMessage.error(`找不到联系人: ${form.value.contact}`);
       return;
     }
 
@@ -1004,7 +1001,7 @@ const submitForm = async (e) => {
     const formData = {
       ...form.value,
       leaderId: leaderUser.id,
-      contactId: contactUser.id,
+      status: "进行中",
       organizations: form.value.organizations.map(org => ({
         ...org,
         participants: Array.isArray(org.participants) ? org.participants : [],

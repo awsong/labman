@@ -151,6 +151,95 @@ const researchAreas = [
   "智能制造",
 ];
 
+// 预期成果列表
+const expectedOutcomes = [
+  {
+    type: "论文发表",
+    details: [
+      "在SCI/EI检索期刊发表论文",
+      "在核心期刊发表研究论文",
+      "在国际会议发表论文",
+      "在国内重要期刊发表论文",
+    ],
+  },
+  {
+    type: "专利申请",
+    details: [
+      "申请发明专利",
+      "申请实用新型专利",
+      "申请软件著作权",
+      "申请外观设计专利",
+    ],
+  },
+  {
+    type: "技术报告",
+    details: [
+      "形成技术研究报告",
+      "完成可行性分析报告",
+      "编写技术规范文档",
+      "撰写项目总结报告",
+    ],
+  },
+  {
+    type: "系统开发",
+    details: ["开发原型系统", "完成示范应用", "建立实验平台", "部署生产环境"],
+  },
+];
+
+// 参与人角色和职责
+const participantRoles = [
+  {
+    role: "项目负责人",
+    responsibilities: [
+      "总体规划与协调",
+      "项目进度管理",
+      "资源调配",
+      "质量控制",
+    ],
+  },
+  {
+    role: "技术负责人",
+    responsibilities: [
+      "技术方案设计",
+      "关键技术攻关",
+      "技术文档审核",
+      "技术团队指导",
+    ],
+  },
+  {
+    role: "研究人员",
+    responsibilities: [
+      "具体研究工作",
+      "实验设计与实施",
+      "数据分析",
+      "撰写研究报告",
+    ],
+  },
+  {
+    role: "开发工程师",
+    responsibilities: [
+      "系统开发实现",
+      "代码编写测试",
+      "技术文档编写",
+      "部署维护支持",
+    ],
+  },
+];
+
+// 专业技能列表
+const skills = [
+  "Python开发",
+  "Java开发",
+  "深度学习",
+  "数据挖掘",
+  "Web开发",
+  "数据库设计",
+  "系统架构",
+  "项目管理",
+  "算法设计",
+  "网络安全",
+];
+
 // 生成随机中文姓名
 const generateChineseName = () => {
   const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
@@ -177,8 +266,9 @@ export function generateTestData() {
       INSERT INTO users (
         username, password, name, role,
         idNumber, position, title, education,
-        major, researchArea, organizationId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        major, researchArea, organizationId,
+        skills, responsibilities, projectRole
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     organizations.forEach((org) => {
@@ -195,18 +285,31 @@ export function generateTestData() {
         const researchArea =
           researchAreas[Math.floor(Math.random() * researchAreas.length)];
 
+        // 随机选择3-5个技能
+        const userSkills = shuffle(skills).slice(
+          0,
+          3 + Math.floor(Math.random() * 3)
+        );
+
+        // 随机选择一个角色及其职责
+        const roleInfo =
+          participantRoles[Math.floor(Math.random() * participantRoles.length)];
+
         insertUser.run(
           username,
           "password",
           name,
-          "user",
-          null,
+          roleInfo.role,
+          `${Math.floor(Math.random() * 10000000000)}`,
           position,
           title,
           education,
           major,
           researchArea,
-          org.id
+          org.id,
+          JSON.stringify(userSkills),
+          JSON.stringify(roleInfo.responsibilities),
+          roleInfo.role
         );
       }
     });
@@ -217,17 +320,17 @@ export function generateTestData() {
     // 生成200个项目
     const insertProject = db.prepare(`
       INSERT INTO projects (
-        name, type, organizationId, leaderId, contactId, teamAllocation,
-        collaborators, startDate, endDate, summary, kpis,
-        taskDocument
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        name, type, status, startDate, endDate,
+        budget, description, expectedOutcomes,
+        organizationId, leaderId
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertProjectOrg = db.prepare(`
       INSERT INTO project_organizations (
         projectId, organizationId, isLeader, selfFunding, allocation,
-        leader, contact, participants, expectedOutcomes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        leader, participants, expectedOutcomes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMilestone = db.prepare(`
@@ -265,8 +368,6 @@ export function generateTestData() {
       );
       const leader =
         leadOrgUsers[Math.floor(Math.random() * leadOrgUsers.length)];
-      const contact =
-        leadOrgUsers[Math.floor(Math.random() * leadOrgUsers.length)];
 
       // 生成项目名称
       const prefix =
@@ -279,20 +380,14 @@ export function generateTestData() {
       const result = insertProject.run(
         projectName,
         type,
-        leadOrg.id,
-        leader.id,
-        contact.id,
-        JSON.stringify({ 研究人员: 3, 技术人员: 2, 管理人员: 1 }),
-        JSON.stringify(["合作单位A", "合作单位B"]),
+        "进行中",
         startDate.toISOString().split("T")[0],
         endDate.toISOString().split("T")[0],
+        null,
         `这是一个${type}，主要研究${prefix}${suffix}相关内容，包括关键技术突破、应用示范等。`,
-        JSON.stringify([
-          { name: "论文发表", target: "3篇" },
-          { name: "专利申请", target: "2项" },
-          { name: "软件著作权", target: "1项" },
-        ]),
-        null
+        JSON.stringify(expectedOutcomes),
+        leadOrg.id,
+        leader.id
       );
 
       const projectId = result.lastInsertRowid;
@@ -303,11 +398,11 @@ export function generateTestData() {
 
       // 从牵头单位的用户中选择参与人员
       const participants = leadOrgUsers
-        .filter((user) => user.id !== leader.id && user.id !== contact.id)
+        .filter((user) => user.id !== leader.id)
         .slice(0, 3)
         .map((user) => user.name);
 
-      const expectedOutcomes = {
+      const projectExpectedOutcomes = {
         software: Math.floor(Math.random() * 5),
         hardware: Math.floor(Math.random() * 3),
         papers: Math.floor(Math.random() * 10),
@@ -325,9 +420,8 @@ export function generateTestData() {
         leadOrgFunding,
         leadOrgAllocation,
         leader.name,
-        contact.name,
         JSON.stringify(participants),
-        JSON.stringify(expectedOutcomes)
+        JSON.stringify(projectExpectedOutcomes)
       );
 
       // 添加1-3个参与单位
@@ -348,16 +442,12 @@ export function generateTestData() {
         // 获取参与单位的用户
         const orgUsers = users.filter((user) => user.organizationId === org.id);
 
-        // 为参与单位选择负责人和联系人
+        // 为参与单位选择负责人
         const orgLeader = orgUsers[Math.floor(Math.random() * orgUsers.length)];
-        const orgContact =
-          orgUsers[Math.floor(Math.random() * orgUsers.length)];
 
         // 选择参与人员
         const orgParticipants = orgUsers
-          .filter(
-            (user) => user.id !== orgLeader.id && user.id !== orgContact.id
-          )
+          .filter((user) => user.id !== orgLeader.id)
           .slice(0, 3)
           .map((user) => user.name);
 
@@ -379,7 +469,6 @@ export function generateTestData() {
           selfFunding,
           allocation,
           orgLeader.name,
-          orgContact.name,
           JSON.stringify(orgParticipants),
           JSON.stringify(orgExpectedOutcomes)
         );
@@ -433,4 +522,19 @@ export function generateTestData() {
     console.error("Error generating test data:", error);
     throw error;
   }
+}
+
+// 辅助函数：随机打乱数组
+function shuffle(array) {
+  let currentIndex = array.length,
+    randomIndex;
+  while (currentIndex != 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex],
+      array[currentIndex],
+    ];
+  }
+  return array;
 }
