@@ -191,6 +191,7 @@
                 required
                 class="form-input"
                 :disabled="index === 0"
+                @change="handleOrgChange(index)"
               >
                 <option value="" disabled>请选择单位</option>
                 <option
@@ -237,6 +238,167 @@
               </label>
               <div class="form-input bg-gray-100 dark:bg-gray-700">
                 {{ (parseFloat(org.selfFunding || 0) + parseFloat(org.allocation || 0)).toFixed(2) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                负责人 <span class="text-red-500">*</span>
+              </label>
+              <select
+                v-model="org.leader"
+                required
+                class="form-input"
+                :disabled="index === 0"
+              >
+                <option value="" disabled>请选择负责人</option>
+                <option
+                  v-for="user in index === 0 ? leadOrgUsers : (orgUsers[org.organizationId] || [])"
+                  :key="user.id"
+                  :value="user.name"
+                >
+                  {{ user.name }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                联系人 <span class="text-red-500">*</span>
+              </label>
+              <select
+                v-model="org.contact"
+                required
+                class="form-input"
+                :disabled="index === 0"
+              >
+                <option value="" disabled>请选择联系人</option>
+                <option
+                  v-for="user in index === 0 ? leadOrgUsers : (orgUsers[org.organizationId] || [])"
+                  :key="user.id"
+                  :value="user.name"
+                >
+                  {{ user.name }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                参与人
+              </label>
+              <div class="space-y-2">
+                <!-- 人员选择 -->
+                <select
+                  class="form-input w-full"
+                  :disabled="!org.organizationId"
+                  v-model="selectedParticipants[index]"
+                  @change="addParticipant(index)"
+                >
+                  <option value="" disabled>选择参与人</option>
+                  <option
+                    v-for="user in index === 0 ? leadOrgUsers : (orgUsers[org.organizationId] || [])"
+                    :key="user.id"
+                    :value="user.name"
+                    :disabled="org.participants.includes(user.name)"
+                  >
+                    {{ user.name }}
+                  </option>
+                </select>
+
+                <!-- 参与人列表 -->
+                <div v-if="org.participants.length > 0" class="flex flex-wrap gap-2">
+                  <div v-for="participant in org.participants" :key="participant" 
+                    class="inline-flex items-center px-2.5 py-1.5 rounded-full text-sm bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200">
+                    {{ participant }}
+                    <button type="button" @click="removeParticipant(index, participant)"
+                      class="ml-1 text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200">
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              预期成果
+            </label>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">软件</label>
+                <input
+                  v-model="org.expectedOutcomes.software"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">硬件</label>
+                <input
+                  v-model="org.expectedOutcomes.hardware"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">论文</label>
+                <input
+                  v-model="org.expectedOutcomes.papers"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">专利</label>
+                <input
+                  v-model="org.expectedOutcomes.patents"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">软件著作权</label>
+                <input
+                  v-model="org.expectedOutcomes.copyrights"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">标准</label>
+                <input
+                  v-model="org.expectedOutcomes.standards"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">技术报告</label>
+                <input
+                  v-model="org.expectedOutcomes.reports"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">应用示范证明</label>
+                <input
+                  v-model="org.expectedOutcomes.demonstrations"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
               </div>
             </div>
           </div>
@@ -438,6 +600,7 @@ import {
   DocumentArrowUpIcon,
   ArrowPathIcon,
 } from "@heroicons/vue/24/outline";
+import { ElMessage } from "element-plus";
 
 const props = defineProps({
   initialData: {
@@ -470,6 +633,7 @@ const emit = defineEmits(["submit", "cancel", "file-selected"]);
 const organizations = ref([]);
 const selectedOrganizations = ref([]);
 const leadOrgUsers = ref([]);
+const orgUsers = ref({});
 const form = ref({
   name: "",
   type: "",
@@ -499,8 +663,71 @@ const fetchOrganizations = async () => {
     
     // 如果是编辑模式，需要设置已选择的组织
     if (props.initialData?.organizations) {
-      selectedOrganizations.value = JSON.parse(props.initialData.organizations);
-      form.value.organizations = selectedOrganizations.value;
+      try {
+        selectedOrganizations.value = typeof props.initialData.organizations === 'string' 
+          ? JSON.parse(props.initialData.organizations)
+          : props.initialData.organizations;
+        
+        // 确保每个组织都有participants数组和expectedOutcomes对象
+        selectedOrganizations.value = selectedOrganizations.value.map(org => {
+          // 解析 participants 字符串
+          let parsedParticipants = [];
+          if (typeof org.participants === 'string') {
+            try {
+              parsedParticipants = JSON.parse(org.participants);
+            } catch (e) {
+              console.error('Error parsing participants:', e);
+              parsedParticipants = [];
+            }
+          } else if (Array.isArray(org.participants)) {
+            parsedParticipants = org.participants;
+          }
+
+          // 解析 expectedOutcomes 字符串
+          let parsedOutcomes = {};
+          if (typeof org.expectedOutcomes === 'string') {
+            try {
+              parsedOutcomes = JSON.parse(org.expectedOutcomes);
+            } catch (e) {
+              console.error('Error parsing expectedOutcomes:', e);
+              parsedOutcomes = {};
+            }
+          } else if (org.expectedOutcomes && typeof org.expectedOutcomes === 'object') {
+            parsedOutcomes = org.expectedOutcomes;
+          }
+
+          return {
+            ...org,
+            participants: parsedParticipants,
+            expectedOutcomes: parsedOutcomes || {
+              software: 0,
+              hardware: 0,
+              papers: 0,
+              patents: 0,
+              copyrights: 0,
+              standards: 0,
+              reports: 0,
+              demonstrations: 0
+            }
+          };
+        });
+        
+        form.value.organizations = selectedOrganizations.value;
+
+        // 如果是编辑模式，设置牵头单位的负责人和联系人
+        if (props.initialData?.leader && props.initialData?.contact) {
+          const leaderOrg = selectedOrganizations.value.find(org => org.organizationId === props.initialData.organizationId);
+          if (leaderOrg) {
+            leaderOrg.leader = props.initialData.leader;
+            leaderOrg.contact = props.initialData.contact;
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing organizations:', error);
+        // 如果解析失败，使用空数组
+        selectedOrganizations.value = [];
+        form.value.organizations = [];
+      }
     }
   } catch (error) {
     console.error('Error fetching organizations:', error);
@@ -518,8 +745,11 @@ const fetchLeadOrgUsers = async (organizationId) => {
 
   try {
     const response = await fetch(`/api/organizations/${organizationId}/users`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch organization users');
+    }
     const data = await response.json();
-    leadOrgUsers.value = data;
+    leadOrgUsers.value = data || [];
     
     // 如果当前选择的负责人或联系人不在新的人员列表中，清空选择
     if (form.value.leader && !leadOrgUsers.value.some(user => user.name === form.value.leader)) {
@@ -531,6 +761,28 @@ const fetchLeadOrgUsers = async (organizationId) => {
   } catch (error) {
     console.error('Error fetching organization users:', error);
     leadOrgUsers.value = [];
+    form.value.leader = "";
+    form.value.contact = "";
+  }
+};
+
+// Add new function to fetch organization users
+const fetchOrgUsers = async (organizationId) => {
+  if (!organizationId) {
+    orgUsers.value[organizationId] = [];
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/organizations/${organizationId}/users`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch organization users');
+    }
+    const data = await response.json();
+    orgUsers.value[organizationId] = data || [];
+  } catch (error) {
+    console.error('Error fetching organization users:', error);
+    orgUsers.value[organizationId] = [];
   }
 };
 
@@ -541,6 +793,40 @@ onMounted(async () => {
   if (props.initialData?.organizationId) {
     await fetchLeadOrgUsers(props.initialData.organizationId);
   }
+
+  // 如果没有组织数据，初始化一个空的牵头单位
+  if (!form.value.organizations.length) {
+    form.value.organizations = [{
+      organizationId: form.value.organizationId || "",
+      selfFunding: "0.00",
+      allocation: "0.00",
+      leader: form.value.leader || "",
+      contact: form.value.contact || "",
+      participants: [],
+      expectedOutcomes: {
+        software: 0,
+        hardware: 0,
+        papers: 0,
+        patents: 0,
+        copyrights: 0,
+        standards: 0,
+        reports: 0,
+        demonstrations: 0
+      }
+    }];
+  }
+
+  // 获取所有已选择组织的用户列表
+  for (const org of form.value.organizations) {
+    if (org.organizationId) {
+      await fetchOrgUsers(org.organizationId);
+    }
+  }
+
+  // 初始化 selectedParticipants
+  form.value.organizations.forEach((_, index) => {
+    selectedParticipants.value[index] = "";
+  });
 });
 
 // 计算总经费
@@ -555,16 +841,32 @@ const totalFunding = computed(() => {
 
 // 添加参与单位
 const addOrganization = () => {
+  const newIndex = form.value.organizations.length;
   form.value.organizations.push({
     organizationId: "",
     selfFunding: "0.00",
-    allocation: "0.00"
+    allocation: "0.00",
+    leader: "",
+    contact: "",
+    participants: [],
+    expectedOutcomes: {
+      software: 0,
+      hardware: 0,
+      papers: 0,
+      patents: 0,
+      copyrights: 0,
+      standards: 0,
+      reports: 0,
+      demonstrations: 0
+    }
   });
+  selectedParticipants.value[newIndex] = "";
 };
 
 // 移除参与单位
 const removeOrganization = (index) => {
   form.value.organizations.splice(index, 1);
+  delete selectedParticipants.value[index];
 };
 
 // 处理经费输入
@@ -606,48 +908,17 @@ const formatFunding = (index, field) => {
   }
 };
 
-// Watch for changes in initialData and update the form
-watch(() => props.initialData, (newData) => {
-  if (newData) {
-    Object.keys(form.value).forEach((key) => {
-      if (key !== 'organizations') {
-        form.value[key] = newData[key] !== undefined ? newData[key] : form.value[key];
-      }
-    });
-    
-    // 只在有 organizations 数据时进行解析
-    if (newData.organizations && typeof newData.organizations === 'string') {
-      form.value.organizations = JSON.parse(newData.organizations);
-    } else if (!form.value.organizations.length) {
-      // 如果没有组织数据，初始化一个空的牵头单位
-      form.value.organizations = [{
-        organizationId: "",
-        selfFunding: "0.00",
-        allocation: "0.00"
-      }];
-    }
-
-    // 如果有牵头单位，获取其用户列表
-    if (newData.organizationId) {
-      fetchLeadOrgUsers(newData.organizationId);
-    }
+// Add handler for organization change
+const handleOrgChange = async (index) => {
+  const org = form.value.organizations[index];
+  if (org.organizationId) {
+    await fetchOrgUsers(org.organizationId);
+    // Reset leader, contact and participants when organization changes
+    org.leader = "";
+    org.contact = "";
+    org.participants = [];
   }
-}, { immediate: true });
-
-// 监听牵头单位的变化
-watch(() => form.value.organizationId, async (newOrgId) => {
-  if (newOrgId && form.value.organizations.length > 0) {
-    // 更新参与单位及经费中的牵头单位
-    form.value.organizations[0].organizationId = newOrgId;
-    // 获取牵头单位的人员列表
-    await fetchLeadOrgUsers(newOrgId);
-  } else {
-    // 如果没有选择牵头单位，清空人员列表和选择
-    leadOrgUsers.value = [];
-    form.value.leader = "";
-    form.value.contact = "";
-  }
-});
+};
 
 // Handle file selection
 const handleFileChange = (event) => {
@@ -659,24 +930,282 @@ const handleFileChange = (event) => {
 };
 
 // Submit the form
-const submitForm = () => {
-  // 验证所有组织的经费信息
-  if (!form.value.organizations.length) {
-    alert('请至少添加一个参与单位');
-    return;
-  }
-
-  for (const org of form.value.organizations) {
-    if (!org.organizationId) {
-      alert('请选择所有参与单位');
+const submitForm = async (e) => {
+  e.preventDefault();
+  
+  try {
+    // 基本验证
+    if (!form.value.name) {
+      ElMessage.error("请输入项目名称");
       return;
     }
-    if (parseFloat(org.selfFunding) < 0 || parseFloat(org.allocation) < 0) {
-      alert('经费不能为负数');
+    if (!form.value.type) {
+      ElMessage.error("请选择项目类型");
       return;
     }
-  }
+    if (!form.value.organizationId) {
+      ElMessage.error("请选择牵头单位");
+      return;
+    }
+    if (!form.value.leader) {
+      ElMessage.error("请选择项目负责人");
+      return;
+    }
+    if (!form.value.contact) {
+      ElMessage.error("请选择联系人");
+      return;
+    }
+    if (!form.value.startDate) {
+      ElMessage.error("请选择开始日期");
+      return;
+    }
+    if (!form.value.endDate) {
+      ElMessage.error("请选择结束日期");
+      return;
+    }
 
-  emit("submit", form.value);
+    // 验证经费
+    for (const org of form.value.organizations) {
+      if (org.selfFunding < 0 || org.allocation < 0) {
+        ElMessage.error("经费不能为负数");
+        return;
+      }
+    }
+
+    // 验证牵头单位信息
+    const leaderOrg = form.value.organizations.find(org => org.organizationId === form.value.organizationId);
+    if (!leaderOrg) {
+      ElMessage.error("牵头单位信息不完整");
+      return;
+    }
+    if (!leaderOrg.leader) {
+      ElMessage.error("请选择牵头单位负责人");
+      return;
+    }
+    if (!leaderOrg.contact) {
+      ElMessage.error("请选择牵头单位联系人");
+      return;
+    }
+
+    // 获取牵头单位的负责人和联系人ID
+    const leaderUser = leadOrgUsers.value.find(user => user.name === form.value.leader);
+    const contactUser = leadOrgUsers.value.find(user => user.name === form.value.contact);
+
+    if (!leaderUser) {
+      ElMessage.error(`找不到负责人: ${form.value.leader}`);
+      return;
+    }
+    if (!contactUser) {
+      ElMessage.error(`找不到联系人: ${form.value.contact}`);
+      return;
+    }
+
+    // 创建要提交的数据副本，并添加用户ID
+    const formData = {
+      ...form.value,
+      leaderId: leaderUser.id,
+      contactId: contactUser.id,
+      organizations: form.value.organizations.map(org => ({
+        ...org,
+        participants: Array.isArray(org.participants) ? org.participants : [],
+        expectedOutcomes: org.expectedOutcomes || {
+          software: 0,
+          hardware: 0,
+          papers: 0,
+          patents: 0,
+          copyrights: 0,
+          standards: 0,
+          reports: 0,
+          demonstrations: 0
+        }
+      }))
+    };
+
+    // 提交表单
+    await emit("submit", formData);
+  } catch (error) {
+    console.error("Error submitting form:", error);
+    ElMessage.error(error.response?.data?.error || "提交表单失败，请稍后重试");
+  }
+};
+
+// Modify watch for initialData to handle new fields
+watch(() => props.initialData, (newData) => {
+  if (newData) {
+    Object.keys(form.value).forEach((key) => {
+      if (key !== 'organizations') {
+        form.value[key] = newData[key] !== undefined ? newData[key] : form.value[key];
+      }
+    });
+    
+    // 只在有 organizations 数据时进行解析
+    if (newData.organizations) {
+      const parsedOrgs = typeof newData.organizations === 'string' 
+        ? JSON.parse(newData.organizations)
+        : newData.organizations;
+      
+      // 确保每个组织都有新的字段
+      form.value.organizations = parsedOrgs.map(org => {
+        // 解析 participants 字符串
+        let parsedParticipants = [];
+        if (typeof org.participants === 'string') {
+          try {
+            parsedParticipants = JSON.parse(org.participants);
+          } catch (e) {
+            console.error('Error parsing participants:', e);
+            parsedParticipants = [];
+          }
+        } else if (Array.isArray(org.participants)) {
+          parsedParticipants = org.participants;
+        }
+
+        // 解析 expectedOutcomes 字符串
+        let parsedOutcomes = {};
+        if (typeof org.expectedOutcomes === 'string') {
+          try {
+            parsedOutcomes = JSON.parse(org.expectedOutcomes);
+          } catch (e) {
+            console.error('Error parsing expectedOutcomes:', e);
+            parsedOutcomes = {};
+          }
+        } else if (org.expectedOutcomes && typeof org.expectedOutcomes === 'object') {
+          parsedOutcomes = org.expectedOutcomes;
+        }
+
+        return {
+          ...org,
+          leader: org.leader || "",
+          contact: org.contact || "",
+          participants: parsedParticipants,
+          expectedOutcomes: parsedOutcomes || {
+            software: 0,
+            hardware: 0,
+            papers: 0,
+            patents: 0,
+            copyrights: 0,
+            standards: 0,
+            reports: 0,
+            demonstrations: 0
+          }
+        };
+      });
+
+      // 如果是编辑模式，设置牵头单位的负责人和联系人
+      if (newData.leader && newData.contact) {
+        const leaderOrg = form.value.organizations.find(org => org.organizationId === newData.organizationId);
+        if (leaderOrg) {
+          leaderOrg.leader = newData.leader;
+          leaderOrg.contact = newData.contact;
+        }
+      }
+    } else if (!form.value.organizations.length) {
+      // 如果没有组织数据，初始化一个空的牵头单位
+      form.value.organizations = [{
+        organizationId: "",
+        selfFunding: "0.00",
+        allocation: "0.00",
+        leader: newData.leader || "",
+        contact: newData.contact || "",
+        participants: [],
+        expectedOutcomes: {
+          software: 0,
+          hardware: 0,
+          papers: 0,
+          patents: 0,
+          copyrights: 0,
+          standards: 0,
+          reports: 0,
+          demonstrations: 0
+        }
+      }];
+    }
+
+    // 如果有牵头单位，获取其用户列表
+    if (newData.organizationId) {
+      fetchLeadOrgUsers(newData.organizationId);
+    }
+
+    // 获取所有参与单位的用户列表
+    form.value.organizations.forEach(async (org) => {
+      if (org.organizationId) {
+        await fetchOrgUsers(org.organizationId);
+      }
+    });
+  }
+}, { immediate: true });
+
+// 监听牵头单位的负责人变化
+watch(() => form.value.organizations[0]?.leader, (newLeader) => {
+  if (form.value.organizations.length > 0 && form.value.organizations[0].organizationId === form.value.organizationId) {
+    form.value.leader = newLeader;
+  }
+});
+
+// 监听牵头单位的联系人变化
+watch(() => form.value.organizations[0]?.contact, (newContact) => {
+  if (form.value.organizations.length > 0 && form.value.organizations[0].organizationId === form.value.organizationId) {
+    form.value.contact = newContact;
+  }
+});
+
+// 监听牵头单位变化
+watch(() => form.value.organizationId, (newId) => {
+  if (newId) {
+    fetchLeadOrgUsers(newId);
+    // 同步更新参与单位及经费中的牵头单位信息
+    if (form.value.organizations.length > 0) {
+      form.value.organizations[0].organizationId = newId;
+      form.value.organizations[0].leader = form.value.leader;
+      form.value.organizations[0].contact = form.value.contact;
+      // 清空参与人列表
+      form.value.organizations[0].participants = [];
+      selectedParticipants.value[0] = "";
+    }
+  } else {
+    leadOrgUsers.value = [];
+    form.value.leader = "";
+    form.value.contact = "";
+    // 清空参与单位及经费中的牵头单位信息
+    if (form.value.organizations.length > 0) {
+      form.value.organizations[0].organizationId = "";
+      form.value.organizations[0].leader = "";
+      form.value.organizations[0].contact = "";
+      form.value.organizations[0].participants = [];
+      selectedParticipants.value[0] = "";
+    }
+  }
+});
+
+// 监听项目负责人变化
+watch(() => form.value.leader, (newLeader) => {
+  // 同步更新参与单位及经费中的牵头单位负责人
+  if (form.value.organizations.length > 0) {
+    form.value.organizations[0].leader = newLeader;
+  }
+});
+
+// 监听联系人变化
+watch(() => form.value.contact, (newContact) => {
+  // 同步更新参与单位及经费中的牵头单位联系人
+  if (form.value.organizations.length > 0) {
+    form.value.organizations[0].contact = newContact;
+  }
+});
+
+// 在 script setup 部分添加
+const selectedParticipants = ref({});
+
+// 添加参与人
+const addParticipant = (index) => {
+  const participant = selectedParticipants.value[index];
+  if (participant && !form.value.organizations[index].participants.includes(participant)) {
+    form.value.organizations[index].participants.push(participant);
+    selectedParticipants.value[index] = ""; // 重置选择
+  }
+};
+
+// 移除参与人
+const removeParticipant = (index, participant) => {
+  form.value.organizations[index].participants = form.value.organizations[index].participants.filter(p => p !== participant);
 };
 </script>

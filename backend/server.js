@@ -120,6 +120,10 @@ function initializeDatabase() {
         isLeader BOOLEAN NOT NULL DEFAULT 0,
         selfFunding DECIMAL(10,2) NOT NULL DEFAULT 0,
         allocation DECIMAL(10,2) NOT NULL DEFAULT 0,
+        leader TEXT NOT NULL,
+        contact TEXT NOT NULL,
+        participants TEXT,
+        expectedOutcomes TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE,
@@ -545,7 +549,7 @@ app.post("/api/projects", (req, res) => {
       endDate,
       summary,
       kpis,
-      organizations, // Array of {organizationId, selfFunding, allocation}
+      organizations, // Array of {organizationId, selfFunding, allocation, leader, contact, participants, expectedOutcomes}
     } = req.body;
 
     // 根据名字查找用户 ID
@@ -556,8 +560,11 @@ app.post("/api/projects", (req, res) => {
     const leaderId = getUserIdByName.get(leader, organizationId)?.id;
     const contactId = getUserIdByName.get(contact, organizationId)?.id;
 
-    if (!leaderId || !contactId) {
-      throw new Error("项目负责人或联系人不存在");
+    if (!leaderId) {
+      throw new Error(`找不到负责人: ${leader}`);
+    }
+    if (!contactId) {
+      throw new Error(`找不到联系人: ${contact}`);
     }
 
     // Insert project
@@ -587,19 +594,40 @@ app.post("/api/projects", (req, res) => {
     // Insert project organizations
     const insertProjectOrg = db.prepare(`
       INSERT INTO project_organizations (
-        projectId, organizationId, isLeader, selfFunding, allocation
-      ) VALUES (?, ?, ?, ?, ?)
+        projectId, organizationId, isLeader, selfFunding, allocation,
+        leader, contact, participants, expectedOutcomes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Insert leader organization first
+    const leaderOrg = organizations.find(
+      (org) => org.organizationId === organizationId
+    );
+    if (!leaderOrg) {
+      throw new Error("找不到牵头单位信息");
+    }
+
     insertProjectOrg.run(
       projectId,
       organizationId,
       1,
-      organizations.find((org) => org.organizationId === organizationId)
-        ?.selfFunding || 0,
-      organizations.find((org) => org.organizationId === organizationId)
-        ?.allocation || 0
+      leaderOrg?.selfFunding || 0,
+      leaderOrg?.allocation || 0,
+      leaderOrg?.leader || leader,
+      leaderOrg?.contact || contact,
+      JSON.stringify(leaderOrg?.participants || []),
+      JSON.stringify(
+        leaderOrg?.expectedOutcomes || {
+          software: 0,
+          hardware: 0,
+          papers: 0,
+          patents: 0,
+          copyrights: 0,
+          standards: 0,
+          reports: 0,
+          demonstrations: 0,
+        }
+      )
     );
 
     // Insert other organizations
@@ -610,7 +638,22 @@ app.post("/api/projects", (req, res) => {
           org.organizationId,
           0,
           org.selfFunding || 0,
-          org.allocation || 0
+          org.allocation || 0,
+          org.leader,
+          org.contact,
+          JSON.stringify(org.participants || []),
+          JSON.stringify(
+            org.expectedOutcomes || {
+              software: 0,
+              hardware: 0,
+              papers: 0,
+              patents: 0,
+              copyrights: 0,
+              standards: 0,
+              reports: 0,
+              demonstrations: 0,
+            }
+          )
         );
       }
     }
@@ -623,6 +666,8 @@ app.post("/api/projects", (req, res) => {
           p.*,
           o.name as organization,
           o.type as organizationType,
+          leader.name as leader,
+          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -632,7 +677,11 @@ app.post("/api/projects", (req, res) => {
                 'organizationType', o2.type,
                 'isLeader', po.isLeader,
                 'selfFunding', po.selfFunding,
-                'allocation', po.allocation
+                'allocation', po.allocation,
+                'leader', po.leader,
+                'contact', po.contact,
+                'participants', po.participants,
+                'expectedOutcomes', po.expectedOutcomes
               )
             )
             FROM project_organizations po
@@ -651,15 +700,22 @@ app.post("/api/projects", (req, res) => {
           ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
+        JOIN users leader ON p.leaderId = leader.id
+        JOIN users contact ON p.contactId = contact.id
         WHERE p.id = ?
       `
       )
       .get(projectId);
 
+    if (!project) {
+      throw new Error("创建项目失败：无法获取项目详情");
+    }
+
     db.exec("COMMIT");
     res.status(201).json(project);
   } catch (error) {
     db.exec("ROLLBACK");
+    console.error("Error creating project:", error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -673,16 +729,28 @@ app.put("/api/projects/:id", (req, res) => {
       name,
       type,
       organizationId,
-      leader,
-      contact,
+      leaderId,
+      contactId,
       teamAllocation,
       collaborators,
       startDate,
       endDate,
       summary,
       kpis,
-      organizations, // Array of {organizationId, selfFunding, allocation}
+      organizations, // Array of {organizationId, selfFunding, allocation, leader, contact, participants, expectedOutcomes}
     } = req.body;
+
+    // Verify that the users exist
+    const verifyUser = db.prepare(`SELECT id FROM users WHERE id = ?`);
+    const leaderExists = verifyUser.get(leaderId);
+    const contactExists = verifyUser.get(contactId);
+
+    if (!leaderExists) {
+      throw new Error(`找不到负责人ID: ${leaderId}`);
+    }
+    if (!contactExists) {
+      throw new Error(`找不到联系人ID: ${contactId}`);
+    }
 
     // Update project
     const updateProject = db.prepare(`
@@ -697,8 +765,8 @@ app.put("/api/projects/:id", (req, res) => {
       name,
       type,
       organizationId,
-      leader,
-      contact,
+      leaderId,
+      contactId,
       teamAllocation || null,
       collaborators || null,
       startDate,
@@ -716,19 +784,40 @@ app.put("/api/projects/:id", (req, res) => {
     // Insert project organizations
     const insertProjectOrg = db.prepare(`
       INSERT INTO project_organizations (
-        projectId, organizationId, isLeader, selfFunding, allocation
-      ) VALUES (?, ?, ?, ?, ?)
+        projectId, organizationId, isLeader, selfFunding, allocation,
+        leader, contact, participants, expectedOutcomes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     // Insert leader organization first
+    const leaderOrg = organizations.find(
+      (org) => org.organizationId === organizationId
+    );
+    if (!leaderOrg) {
+      throw new Error("找不到牵头单位信息");
+    }
+
     insertProjectOrg.run(
       req.params.id,
       organizationId,
       1,
-      organizations.find((org) => org.organizationId === organizationId)
-        ?.selfFunding || 0,
-      organizations.find((org) => org.organizationId === organizationId)
-        ?.allocation || 0
+      leaderOrg?.selfFunding || 0,
+      leaderOrg?.allocation || 0,
+      leaderOrg?.leader || "",
+      leaderOrg?.contact || "",
+      JSON.stringify(leaderOrg?.participants || []),
+      JSON.stringify(
+        leaderOrg?.expectedOutcomes || {
+          software: 0,
+          hardware: 0,
+          papers: 0,
+          patents: 0,
+          copyrights: 0,
+          standards: 0,
+          reports: 0,
+          demonstrations: 0,
+        }
+      )
     );
 
     // Insert other organizations
@@ -739,12 +828,27 @@ app.put("/api/projects/:id", (req, res) => {
           org.organizationId,
           0,
           org.selfFunding || 0,
-          org.allocation || 0
+          org.allocation || 0,
+          org.leader || "",
+          org.contact || "",
+          JSON.stringify(org.participants || []),
+          JSON.stringify(
+            org.expectedOutcomes || {
+              software: 0,
+              hardware: 0,
+              papers: 0,
+              patents: 0,
+              copyrights: 0,
+              standards: 0,
+              reports: 0,
+              demonstrations: 0,
+            }
+          )
         );
       }
     }
 
-    // Get updated project with all details
+    // Get the updated project with all details
     const project = db
       .prepare(
         `
@@ -752,6 +856,8 @@ app.put("/api/projects/:id", (req, res) => {
           p.*,
           o.name as organization,
           o.type as organizationType,
+          leader.name as leader,
+          contact.name as contact,
           (
             SELECT json_group_array(
               json_object(
@@ -761,7 +867,11 @@ app.put("/api/projects/:id", (req, res) => {
                 'organizationType', o2.type,
                 'isLeader', po.isLeader,
                 'selfFunding', po.selfFunding,
-                'allocation', po.allocation
+                'allocation', po.allocation,
+                'leader', po.leader,
+                'contact', po.contact,
+                'participants', po.participants,
+                'expectedOutcomes', po.expectedOutcomes
               )
             )
             FROM project_organizations po
@@ -780,15 +890,22 @@ app.put("/api/projects/:id", (req, res) => {
           ) as totalAllocation
         FROM projects p
         JOIN organizations o ON p.organizationId = o.id
+        JOIN users leader ON p.leaderId = leader.id
+        JOIN users contact ON p.contactId = contact.id
         WHERE p.id = ?
       `
       )
       .get(req.params.id);
 
+    if (!project) {
+      throw new Error("更新项目失败：无法获取项目详情");
+    }
+
     db.exec("COMMIT");
     res.json(project);
   } catch (error) {
     db.exec("ROLLBACK");
+    console.error("Error updating project:", error);
     res.status(500).json({ error: error.message });
   }
 });

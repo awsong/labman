@@ -89,13 +89,66 @@ export const useProjectStore = defineStore("project", {
       this.error = null;
 
       try {
+        // 验证项目数据
+        if (!projectData.name) {
+          throw new Error("项目名称不能为空");
+        }
+        if (!projectData.type) {
+          throw new Error("项目类型不能为空");
+        }
+        if (!projectData.organizationId) {
+          throw new Error("牵头单位不能为空");
+        }
+        if (!projectData.leader) {
+          throw new Error("项目负责人不能为空");
+        }
+        if (!projectData.contact) {
+          throw new Error("联系人不能为空");
+        }
+        if (!projectData.startDate) {
+          throw new Error("开始日期不能为空");
+        }
+        if (!projectData.endDate) {
+          throw new Error("结束日期不能为空");
+        }
+
+        // 验证参与单位
+        if (
+          !projectData.organizations ||
+          projectData.organizations.length === 0
+        ) {
+          throw new Error("请至少添加一个参与单位");
+        }
+
+        // 验证牵头单位信息
+        const leaderOrg = projectData.organizations.find(
+          (org) => org.organizationId === projectData.organizationId
+        );
+        if (!leaderOrg) {
+          throw new Error("牵头单位信息不完整");
+        }
+        if (!leaderOrg.leader) {
+          throw new Error("牵头单位负责人不能为空");
+        }
+        if (!leaderOrg.contact) {
+          throw new Error("牵头单位联系人不能为空");
+        }
+
+        // 创建项目
         const response = await api.post("/projects", projectData);
+
+        // 验证响应数据
+        if (!response.data || !response.data.id) {
+          throw new Error("创建项目失败：服务器返回数据无效");
+        }
+
+        // 更新本地状态
         this.projects.push(response.data);
         return response.data;
       } catch (error) {
         this.error = error.message || "创建项目失败";
         console.error("Error creating project:", error);
-        return null;
+        throw error; // 向上传递错误
       } finally {
         this.loading = false;
       }

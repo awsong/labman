@@ -33,7 +33,32 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       window.location.href = "/login";
     }
-    return Promise.reject(error);
+
+    // Handle 500 Internal Server Error
+    if (error.response && error.response.status === 500) {
+      console.error("服务器内部错误:", error.response.data);
+      return Promise.reject(new Error("服务器内部错误，请稍后再试"));
+    }
+
+    // Handle 400 Bad Request
+    if (error.response && error.response.status === 400) {
+      console.error("请求参数错误:", error.response.data);
+      return Promise.reject(
+        new Error(error.response.data.error || "请求参数错误")
+      );
+    }
+
+    // Handle network errors
+    if (!error.response) {
+      console.error("网络错误:", error);
+      return Promise.reject(new Error("网络连接失败，请检查网络设置"));
+    }
+
+    // Handle other errors
+    console.error("API错误:", error.response.data);
+    return Promise.reject(
+      new Error(error.response.data.error || "请求失败，请稍后再试")
+    );
   }
 );
 

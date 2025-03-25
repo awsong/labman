@@ -52,20 +52,61 @@ const createProject = async (projectData) => {
   error.value = "";
 
   try {
+    // 验证项目数据
+    if (!projectData.name) {
+      throw new Error("项目名称不能为空");
+    }
+    if (!projectData.type) {
+      throw new Error("项目类型不能为空");
+    }
+    if (!projectData.organizationId) {
+      throw new Error("牵头单位不能为空");
+    }
+    if (!projectData.leader) {
+      throw new Error("项目负责人不能为空");
+    }
+    if (!projectData.contact) {
+      throw new Error("联系人不能为空");
+    }
+    if (!projectData.startDate) {
+      throw new Error("开始日期不能为空");
+    }
+    if (!projectData.endDate) {
+      throw new Error("结束日期不能为空");
+    }
+
+    // 验证参与单位
+    if (!projectData.organizations || projectData.organizations.length === 0) {
+      throw new Error("请至少添加一个参与单位");
+    }
+
+    // 验证牵头单位信息
+    const leaderOrg = projectData.organizations.find(org => org.organizationId === projectData.organizationId);
+    if (!leaderOrg) {
+      throw new Error("牵头单位信息不完整");
+    }
+    if (!leaderOrg.leader) {
+      throw new Error("牵头单位负责人不能为空");
+    }
+    if (!leaderOrg.contact) {
+      throw new Error("牵头单位联系人不能为空");
+    }
+
+    // 创建项目
     const newProject = await projectStore.createProject(projectData);
 
-    // Upload document if provided
+    // 上传任务书
     if (selectedFile.value) {
       const formData = new FormData();
       formData.append("taskDocument", selectedFile.value);
       await projectStore.uploadTaskDocument(newProject.id, formData);
     }
 
-    // Redirect to project details page
+    // 跳转到项目详情页
     router.push(`/projects/${newProject.id}`);
   } catch (err) {
     console.error("Error creating project:", err);
-    error.value = "创建项目失败，请稍后再试";
+    error.value = err.message || "创建项目失败，请稍后再试";
   } finally {
     loading.value = false;
   }

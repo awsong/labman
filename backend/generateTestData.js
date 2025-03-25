@@ -225,8 +225,9 @@ export function generateTestData() {
 
     const insertProjectOrg = db.prepare(`
       INSERT INTO project_organizations (
-        projectId, organizationId, isLeader, selfFunding, allocation
-      ) VALUES (?, ?, ?, ?, ?)
+        projectId, organizationId, isLeader, selfFunding, allocation,
+        leader, contact, participants, expectedOutcomes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertMilestone = db.prepare(`
@@ -299,12 +300,34 @@ export function generateTestData() {
       // 插入牵头单位及经费
       const leadOrgFunding = 50 + Math.floor(Math.random() * 450);
       const leadOrgAllocation = 100 + Math.floor(Math.random() * 900);
+
+      // 从牵头单位的用户中选择参与人员
+      const participants = leadOrgUsers
+        .filter((user) => user.id !== leader.id && user.id !== contact.id)
+        .slice(0, 3)
+        .map((user) => user.name);
+
+      const expectedOutcomes = {
+        software: Math.floor(Math.random() * 5),
+        hardware: Math.floor(Math.random() * 3),
+        papers: Math.floor(Math.random() * 10),
+        patents: Math.floor(Math.random() * 5),
+        copyrights: Math.floor(Math.random() * 5),
+        standards: Math.floor(Math.random() * 2),
+        reports: Math.floor(Math.random() * 5),
+        demonstrations: Math.floor(Math.random() * 3),
+      };
+
       insertProjectOrg.run(
         projectId,
         leadOrg.id,
         1,
         leadOrgFunding,
-        leadOrgAllocation
+        leadOrgAllocation,
+        leader.name,
+        contact.name,
+        JSON.stringify(participants),
+        JSON.stringify(expectedOutcomes)
       );
 
       // 添加1-3个参与单位
@@ -321,7 +344,45 @@ export function generateTestData() {
         const org = availableOrgs[j];
         const selfFunding = 20 + Math.floor(Math.random() * 180);
         const allocation = 50 + Math.floor(Math.random() * 450);
-        insertProjectOrg.run(projectId, org.id, 0, selfFunding, allocation);
+
+        // 获取参与单位的用户
+        const orgUsers = users.filter((user) => user.organizationId === org.id);
+
+        // 为参与单位选择负责人和联系人
+        const orgLeader = orgUsers[Math.floor(Math.random() * orgUsers.length)];
+        const orgContact =
+          orgUsers[Math.floor(Math.random() * orgUsers.length)];
+
+        // 选择参与人员
+        const orgParticipants = orgUsers
+          .filter(
+            (user) => user.id !== orgLeader.id && user.id !== orgContact.id
+          )
+          .slice(0, 3)
+          .map((user) => user.name);
+
+        const orgExpectedOutcomes = {
+          software: Math.floor(Math.random() * 3),
+          hardware: Math.floor(Math.random() * 2),
+          papers: Math.floor(Math.random() * 5),
+          patents: Math.floor(Math.random() * 3),
+          copyrights: Math.floor(Math.random() * 3),
+          standards: Math.floor(Math.random() * 1),
+          reports: Math.floor(Math.random() * 3),
+          demonstrations: Math.floor(Math.random() * 2),
+        };
+
+        insertProjectOrg.run(
+          projectId,
+          org.id,
+          0,
+          selfFunding,
+          allocation,
+          orgLeader.name,
+          orgContact.name,
+          JSON.stringify(orgParticipants),
+          JSON.stringify(orgExpectedOutcomes)
+        );
       }
 
       // 为每个项目插入3-5个里程碑
