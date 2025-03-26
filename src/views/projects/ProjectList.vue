@@ -351,8 +351,8 @@ const filteredProjects = computed(() => {
     const matchesType = !typeFilter.value || project.type === typeFilter.value;
 
     // Year filter
-    const projectYear = new Date(project.startDate).getFullYear().toString();
-    const matchesYear = !yearFilter.value || projectYear === yearFilter.value;
+    const projectYear = new Date(project.startDate).getFullYear();
+    const matchesYear = !yearFilter.value || projectYear === parseInt(yearFilter.value);
 
     // Status filter
     const projectStatus = getProjectStatus(project);
