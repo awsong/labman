@@ -515,122 +515,196 @@
           <!-- Organizations Tab -->
           <div v-if="currentTab === 'organizations'">
             <div class="overflow-x-auto">
-              <table
-                class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
-              >
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead class="bg-gray-100 dark:bg-gray-800">
                   <tr>
-                    <th
-                      scope="col"
-                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       单位名称
                     </th>
-                    <th
-                      scope="col"
-                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      单位类型
-                    </th>
-                    <th
-                      scope="col"
-                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       负责人
                     </th>
-                    <th
-                      scope="col"
-                      class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      联系人
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       参与人员
                     </th>
-                    <th
-                      scope="col"
-                      class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      自筹经费
-                    </th>
-                    <th
-                      scope="col"
-                      class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      拨款经费
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      经费 (万元)
                     </th>
                   </tr>
                 </thead>
-                <tbody
-                  class="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700"
-                >
-                  <tr
-                    v-for="org in getProjectOrganizations()"
-                    :key="org.organizationId"
-                    :class="{
-                      'bg-primary-50 dark:bg-primary-900/20': org.isLeader,
-                    }"
-                  >
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+                <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  <template v-for="org in getProjectOrganizations()" :key="org.organizationId">
+                    <tr 
+                      class="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                      @click="toggleOrgDetails(org.organizationId)"
                     >
-                      {{ getOrgName(org.organizationId) }}
-                      <span
-                        v-if="org.isLeader"
-                        class="ml-2 text-xs text-primary-600 dark:text-primary-400"
-                        >(牵头单位)</span
-                      >
-                    </td>
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white"
-                    >
-                      {{ org.organizationType }}
-                    </td>
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-white"
-                    >
-                      {{ org.leader }}
-                    </td>
-                    <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                      <div class="flex flex-wrap gap-1">
-                        <span
-                          v-for="participant in getParticipants(org)"
-                          :key="participant"
-                          class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
-                        >
-                          {{ participant }}
-                        </span>
-                      </div>
-                    </td>
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white"
-                    >
-                      {{ formatNumber(org.selfFunding) }}
-                    </td>
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white"
-                    >
-                      {{ formatNumber(org.allocation) }}
-                    </td>
-                  </tr>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        <div class="flex items-center">
+                          <span>{{ getOrgName(org.organizationId) }}</span>
+                          <span v-if="org.isLeader" class="ml-2 text-xs text-primary-600 dark:text-primary-400">(牵头单位)</span>
+                        </div>
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {{ org.leader }}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {{ org.contact }}
+                      </td>
+                      <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        {{ org.participants?.join(", ") || "-" }}
+                      </td>
+                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {{ (parseFloat(org.selfFunding) + parseFloat(org.allocation)).toFixed(2) }}
+                      </td>
+                    </tr>
+                    <!-- 展开的详情面板 -->
+                    <tr v-if="expandedOrgId === org.organizationId">
+                      <td colspan="5" class="px-6 py-4 bg-gray-100/95 dark:bg-gray-800/95 border-t border-b border-gray-200 dark:border-gray-700 shadow-inner text-sm">
+                        <div class="space-y-6">
+                          <!-- 研究内容摘要 -->
+                          <div>
+                            <h4 class="text-xs font-medium text-gray-900 dark:text-white mb-2">研究内容摘要</h4>
+                            <div class="bg-white/90 dark:bg-gray-950/90 p-4 rounded-lg shadow-sm">
+                              <p class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                                {{ org.researchSummary || "暂无研究内容摘要" }}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <!-- 预期成果 -->
+                          <div>
+                            <h4 class="text-xs font-medium text-gray-900 dark:text-white mb-2">预期成果</h4>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              <!-- 软件 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-2.5 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-blue-100 dark:bg-blue-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-[11px] font-medium text-gray-900 dark:text-white">软件</h4>
+                                  </div>
+                                  <span class="text-xs font-semibold text-blue-600 dark:text-blue-400">{{ org.expectedOutcomes?.software || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 硬件 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-2.5 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-green-100 dark:bg-green-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">硬件</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-green-600 dark:text-green-400">{{ org.expectedOutcomes?.hardware || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 论文 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-purple-100 dark:bg-purple-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-600 dark:text-purple-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">论文</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-purple-600 dark:text-purple-400">{{ org.expectedOutcomes?.papers || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 专利 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-yellow-100 dark:bg-yellow-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-600 dark:text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 2a1 1 0 00-1 1v1.323l-3.954 1.582A1 1 0 004 6.32V16a1 1 0 001.029.976l5-1V17a1 1 0 102 0v-1.024l5 1A1 1 0 0018 16V6.32a1.001 1.001 0 00-.046-.343 1 1 0 00-.58-.514L13.42 3.582A1 1 0 0013 3.32V3a1 1 0 00-1-1h-2z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">专利</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-yellow-600 dark:text-yellow-400">{{ org.expectedOutcomes?.patents || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 软件著作权 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-indigo-100 dark:bg-indigo-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-600 dark:text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm3 1h6v4H7V5zm8 8v2h1v-2h-1zm-2-6H7v4h6V7zm2 0h1v4h-1V7zm1-2V4h-1v1h1zm-1 10h1v2h-1v-2zM9 17v-2H7v2h2z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">软件著作权</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{{ org.expectedOutcomes?.copyrights || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 标准 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-red-100 dark:bg-red-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-600 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">标准</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-red-600 dark:text-red-400">{{ org.expectedOutcomes?.standards || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 技术报告 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-pink-100 dark:bg-pink-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-pink-600 dark:text-pink-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">技术报告</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-pink-600 dark:text-pink-400">{{ org.expectedOutcomes?.reports || 0 }}</span>
+                                </div>
+                              </div>
+
+                              <!-- 应用示范证明 -->
+                              <div class="bg-white/90 dark:bg-gray-950/90 rounded-lg shadow-sm p-3 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                  <div class="flex items-center">
+                                    <div class="rounded-full p-1.5 bg-orange-100 dark:bg-orange-900/30">
+                                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-600 dark:text-orange-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <h4 class="ml-2 text-xs font-medium text-gray-900 dark:text-white">应用示范</h4>
+                                  </div>
+                                  <span class="text-sm font-semibold text-orange-600 dark:text-orange-400">{{ org.expectedOutcomes?.demonstrations || 0 }}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
                 </tbody>
-                <tfoot class="bg-gray-50 dark:bg-gray-800/50">
-                  <tr>
-                    <td
-                      colspan="4"
-                      class="px-4 py-2 text-sm font-medium text-gray-900 dark:text-white"
-                    >
-                      总计
-                    </td>
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white"
-                    >
-                      {{ formatNumber(getTotalSelfFunding()) }}
-                    </td>
-                    <td
-                      class="px-4 py-2 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white"
-                    >
-                      {{ formatNumber(getTotalAllocation()) }}
-                    </td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
           </div>
@@ -1007,7 +1081,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive, watch } from "vue";
+import { ref, computed, onMounted, reactive, watch, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   ArrowPathIcon,
@@ -1044,6 +1118,7 @@ const showDeleteMilestoneModal = ref(false);
 const milestoneToDelete = ref(null);
 const deletingMilestone = ref(false);
 const fileInput = ref(null);
+const expandedOrgId = ref(null); // 当前展开的组织ID
 
 // Tabs definition
 const tabs = [
@@ -1540,6 +1615,11 @@ const getTotalAllocation = () => {
   return orgs.reduce((sum, org) => sum + (Number(org.allocation) || 0), 0);
 };
 
+// 切换组织详情的展开/收起状态
+const toggleOrgDetails = (orgId) => {
+  expandedOrgId.value = expandedOrgId.value === orgId ? null : orgId;
+};
+
 // Load project data on component mount
 onMounted(async () => {
   loading.value = true;
@@ -1584,6 +1664,9 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+
+  // 添加点击事件监听器
+  document.addEventListener('click', handleClickOutside);
 });
 
 // 添加 watch 以监听组织数据变化
@@ -1603,6 +1686,20 @@ watch(
   },
   { deep: true }
 );
+
+// 添加点击外部关闭展开面板的处理函数
+const handleClickOutside = (event) => {
+  // 检查点击的元素是否在表格行内
+  const isClickInTable = event.target.closest('tr');
+  if (!isClickInTable) {
+    expandedOrgId.value = null;
+  }
+};
+
+// 在组件卸载时移除事件监听器
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <style scoped>
