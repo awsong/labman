@@ -162,6 +162,86 @@
 
     <div class="card mb-6">
       <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+        研究内容与考核指标
+      </h3>
+
+      <div class="mb-4">
+        <label
+          for="summary"
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
+          研究内容摘要
+        </label>
+        <textarea
+          id="summary"
+          v-model="form.summary"
+          rows="4"
+          class="form-input"
+          placeholder="请概述项目的主要研究内容和目标"
+        ></textarea>
+      </div>
+
+      <div>
+        <label
+          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+        >
+          预期成果汇总
+        </label>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">软件</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.software }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">硬件</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.hardware }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">论文</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.papers }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">专利</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.patents }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">软件著作权</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.copyrights }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">标准</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.standards }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">技术报告</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.reports }}
+            </div>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md dark:bg-gray-700/50">
+            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">应用示范证明</div>
+            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ totalExpectedOutcomes.demonstrations }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-6">
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
         参与单位及经费
       </h3>
 
@@ -238,6 +318,98 @@
               </label>
               <div class="form-input bg-gray-100 dark:bg-gray-700">
                 {{ (parseFloat(org.selfFunding || 0) + parseFloat(org.allocation || 0)).toFixed(2) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              研究内容与摘要
+            </label>
+            <textarea
+              v-model="org.researchSummary"
+              rows="3"
+              class="form-input w-full"
+              :placeholder="index === 0 ? '请描述牵头单位的主要研究内容和任务' : '请描述该参与单位的主要研究内容和任务'"
+            ></textarea>
+          </div>
+
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              预期成果
+            </label>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">软件</label>
+                <input
+                  v-model="org.expectedOutcomes.software"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">硬件</label>
+                <input
+                  v-model="org.expectedOutcomes.hardware"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">论文</label>
+                <input
+                  v-model="org.expectedOutcomes.papers"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">专利</label>
+                <input
+                  v-model="org.expectedOutcomes.patents"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">软件著作权</label>
+                <input
+                  v-model="org.expectedOutcomes.copyrights"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">标准</label>
+                <input
+                  v-model="org.expectedOutcomes.standards"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">技术报告</label>
+                <input
+                  v-model="org.expectedOutcomes.reports"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">应用示范证明</label>
+                <input
+                  v-model="org.expectedOutcomes.demonstrations"
+                  type="number"
+                  min="0"
+                  class="form-input"
+                />
               </div>
             </div>
           </div>
@@ -322,86 +494,6 @@
               </div>
             </div>
           </div>
-
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              预期成果
-            </label>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">软件</label>
-                <input
-                  v-model="org.expectedOutcomes.software"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">硬件</label>
-                <input
-                  v-model="org.expectedOutcomes.hardware"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">论文</label>
-                <input
-                  v-model="org.expectedOutcomes.papers"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">专利</label>
-                <input
-                  v-model="org.expectedOutcomes.patents"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">软件著作权</label>
-                <input
-                  v-model="org.expectedOutcomes.copyrights"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">标准</label>
-                <input
-                  v-model="org.expectedOutcomes.standards"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">技术报告</label>
-                <input
-                  v-model="org.expectedOutcomes.reports"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-              <div>
-                <label class="block text-sm text-gray-600 dark:text-gray-400 mb-1">应用示范证明</label>
-                <input
-                  v-model="org.expectedOutcomes.demonstrations"
-                  type="number"
-                  min="0"
-                  class="form-input"
-                />
-              </div>
-            </div>
-          </div>
         </div>
 
         <button
@@ -441,44 +533,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="card mb-6">
-      <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-        研究内容与考核指标
-      </h3>
-
-      <div class="mb-4">
-        <label
-          for="summary"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          研究内容摘要
-        </label>
-        <textarea
-          id="summary"
-          v-model="form.summary"
-          rows="4"
-          class="form-input"
-          placeholder="请概述项目的主要研究内容和目标"
-        ></textarea>
-      </div>
-
-      <div>
-        <label
-          for="kpis"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          考核指标
-        </label>
-        <textarea
-          id="kpis"
-          v-model="form.kpis"
-          rows="4"
-          class="form-input"
-          placeholder="请列出项目关键考核指标与目标值"
-        ></textarea>
       </div>
     </div>
 
@@ -803,6 +857,7 @@ onMounted(async () => {
       leader: form.value.leader || "",
       contact: form.value.contact || "",
       participants: [],
+      researchSummary: "",
       expectedOutcomes: {
         software: 0,
         hardware: 0,
@@ -849,6 +904,7 @@ const addOrganization = () => {
     leader: "",
     contact: "",
     participants: [],
+    researchSummary: "",
     expectedOutcomes: {
       software: 0,
       hardware: 0,
@@ -1104,6 +1160,7 @@ watch(() => props.initialData, (newData) => {
         leader: newData.leader || "",
         contact: newData.contact || "",
         participants: [],
+        researchSummary: "",
         expectedOutcomes: {
           software: 0,
           hardware: 0,
@@ -1205,4 +1262,19 @@ const addParticipant = (index) => {
 const removeParticipant = (index, participant) => {
   form.value.organizations[index].participants = form.value.organizations[index].participants.filter(p => p !== participant);
 };
+
+// 计算预期成果总和
+const totalExpectedOutcomes = computed(() => {
+  const orgs = form.value.organizations;
+  return {
+    software: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.software) || 0), 0).toFixed(2),
+    hardware: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.hardware) || 0), 0).toFixed(2),
+    papers: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.papers) || 0), 0).toFixed(2),
+    patents: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.patents) || 0), 0).toFixed(2),
+    copyrights: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.copyrights) || 0), 0).toFixed(2),
+    standards: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.standards) || 0), 0).toFixed(2),
+    reports: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.reports) || 0), 0).toFixed(2),
+    demonstrations: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.demonstrations) || 0), 0).toFixed(2)
+  };
+});
 </script>
