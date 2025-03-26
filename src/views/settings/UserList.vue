@@ -47,6 +47,7 @@
         </el-form-item>
         <el-form-item label="用户名" prop="username">
           <el-input 
+            ref="usernameInputRef"
             v-model="form.username" 
             :disabled="!!form.id"
             @blur="checkUsername"
@@ -115,6 +116,7 @@ const organizations = ref([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref("");
 const formRef = ref(null);
+const usernameInputRef = ref(null);
 const form = ref({
   name: "",
   username: "",
@@ -164,9 +166,12 @@ const checkUsername = async () => {
   if (!form.value.username) return;
   try {
     const response = await api.get(`/users/check-username?username=${form.value.username}`);
-    if (response.exists) {
+    if (response.data.exists) {
       ElMessage.error("用户名已存在");
-      form.value.username = "";
+      // 使用ref获取输入框元素并设置焦点
+      if (usernameInputRef.value) {
+        usernameInputRef.value.focus();
+      }
     }
   } catch (error) {
     console.error("检查用户名失败:", error);

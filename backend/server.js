@@ -99,6 +99,7 @@ function initializeDatabase() {
         budget REAL,
         description TEXT,
         expectedOutcomes TEXT,
+        taskDocument TEXT,
         organizationId INTEGER NOT NULL,
         leaderId INTEGER NOT NULL,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -1320,6 +1321,41 @@ app.get("/api/organizations", (req, res) => {
   }
 });
 
+app.post("/api/organizations", (req, res) => {
+  try {
+    const { name, type } = req.body;
+
+    // 验证必填字段
+    if (!name || !type) {
+      return res.status(400).json({ error: "单位名称和类型不能为空" });
+    }
+
+    // 检查单位名称是否已存在
+    const existingOrg = db
+      .prepare("SELECT id FROM organizations WHERE name = ?")
+      .get(name);
+
+    if (existingOrg) {
+      return res.status(400).json({ error: "单位名称已存在" });
+    }
+
+    // 插入新单位
+    const result = db
+      .prepare("INSERT INTO organizations (name, type) VALUES (?, ?)")
+      .run(name, type);
+
+    // 获取新创建的单位信息
+    const organization = db
+      .prepare("SELECT * FROM organizations WHERE id = ?")
+      .get(result.lastInsertRowid);
+
+    res.status(201).json(organization);
+  } catch (error) {
+    console.error("Error creating organization:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/organizations/:id", (req, res) => {
   try {
     const organization = db
@@ -1365,6 +1401,43 @@ app.post("/api/generate-test-data", (req, res) => {
   } catch (error) {
     console.error("Error generating test data:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// 获取所有人员列表
+app.get("/api/users", (req, res) => {
+  try {
+    const users = db
+      .prepare(
+        `SELECT u.*, o.name as organizationName 
+         FROM users u 
+         LEFT JOIN organizations o ON u.organizationId = o.id 
+         ORDER BY u.name`
+      )
+      .all();
+    res.json(users);
+  } catch (error) {
+    console.error("获取用户列表失败:", error);
+    res.status(500).json({ error: "获取用户列表失败" });
+  }
+});
+
+// 检查用户名是否重复
+app.get("/api/users/check-username", (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) {
+      return res.status(400).json({ error: "用户名不能为空" });
+    }
+
+    const existingUser = db
+      .prepare("SELECT id FROM users WHERE username = ?")
+      .get(username);
+
+    res.json({ exists: !!existingUser });
+  } catch (error) {
+    console.error("检查用户名失败:", error);
+    res.status(500).json({ error: "检查用户名失败" });
   }
 });
 
@@ -1497,43 +1570,6 @@ app.put("/api/users/:id/password", (req, res) => {
   }
 });
 
-// 获取所有人员列表
-app.get("/api/users", (req, res) => {
-  try {
-    const users = db
-      .prepare(
-        `SELECT u.*, o.name as organizationName 
-         FROM users u 
-         LEFT JOIN organizations o ON u.organizationId = o.id 
-         ORDER BY u.name`
-      )
-      .all();
-    res.json(users);
-  } catch (error) {
-    console.error("获取用户列表失败:", error);
-    res.status(500).json({ error: "获取用户列表失败" });
-  }
-});
-
-// 检查用户名是否重复
-app.get("/api/users/check-username", (req, res) => {
-  try {
-    const { username } = req.query;
-    if (!username) {
-      return res.status(400).json({ error: "用户名不能为空" });
-    }
-
-    const existingUser = db
-      .prepare("SELECT id FROM users WHERE username = ?")
-      .get(username);
-
-    res.json({ exists: !!existingUser });
-  } catch (error) {
-    console.error("检查用户名失败:", error);
-    res.status(500).json({ error: "检查用户名失败" });
-  }
-});
-
 // 创建用户
 app.post("/api/users", (req, res) => {
   try {
@@ -1559,12 +1595,14 @@ app.post("/api/users", (req, res) => {
 
     const result = db
       .prepare(
-        `INSERT INTO users (name, username, idNumber, organizationId, position, title, education, major, researchArea) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO users (name, username, password, role, idNumber, organizationId, position, title, education, major, researchArea) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         name,
         username,
+        "password", // 设置默认密码
+        "user", // 设置默认角色
         idNumber,
         organizationId,
         position,
