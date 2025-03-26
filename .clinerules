@@ -1,0 +1,21 @@
+# LabMan Project Intelligence
+
+## Key Patterns
+
+1. Vue 3 Composition API is used consistently
+2. State management follows Vuex module pattern
+3. Frontend components are organized by feature
+4. Backend uses Express with SQLite
+
+## Development Notes
+
+- Vite configuration is standard for Vue projects
+- Tailwind CSS is used for all styling
+- PostCSS handles CSS processing
+- File uploads are handled via /uploads endpoint
+
+## Workflow Tips
+
+- New features should follow existing component patterns
+- State changes should go through Vuex stores
+- API endpoints should be documented in techContext.md
