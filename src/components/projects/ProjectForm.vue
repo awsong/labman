@@ -1267,14 +1267,14 @@ const removeParticipant = (index, participant) => {
 const totalExpectedOutcomes = computed(() => {
   const orgs = form.value.organizations;
   return {
-    software: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.software) || 0), 0).toFixed(2),
-    hardware: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.hardware) || 0), 0).toFixed(2),
-    papers: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.papers) || 0), 0).toFixed(2),
-    patents: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.patents) || 0), 0).toFixed(2),
-    copyrights: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.copyrights) || 0), 0).toFixed(2),
-    standards: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.standards) || 0), 0).toFixed(2),
-    reports: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.reports) || 0), 0).toFixed(2),
-    demonstrations: orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.demonstrations) || 0), 0).toFixed(2)
+    software: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.software) || 0), 0)),
+    hardware: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.hardware) || 0), 0)),
+    papers: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.papers) || 0), 0)),
+    patents: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.patents) || 0), 0)),
+    copyrights: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.copyrights) || 0), 0)),
+    standards: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.standards) || 0), 0)),
+    reports: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.reports) || 0), 0)),
+    demonstrations: Math.round(orgs.reduce((sum, org) => sum + (parseFloat(org.expectedOutcomes.demonstrations) || 0), 0))
   };
 });
 </script>
