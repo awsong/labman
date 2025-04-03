@@ -136,9 +136,9 @@ function initializeDatabase() {
         projectId INTEGER NOT NULL,
         title TEXT NOT NULL,
         description TEXT,
-        type TEXT NOT NULL,
         dueDate TEXT NOT NULL,
         status TEXT NOT NULL,
+        weight REAL NOT NULL DEFAULT 1.0,
         completion REAL DEFAULT 0,
         notes TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -997,16 +997,16 @@ app.post("/api/milestones", (req, res) => {
       projectId,
       title,
       description,
-      type,
       dueDate,
       status,
+      weight,
       completion,
       notes,
     } = req.body;
 
     const stmt = db.prepare(`
       INSERT INTO milestones (
-        projectId, title, description, type, dueDate, status, completion, notes
+        projectId, title, description, dueDate, status, weight, completion, notes
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -1014,9 +1014,9 @@ app.post("/api/milestones", (req, res) => {
       projectId,
       title,
       description || null,
-      type,
       dueDate,
       status,
+      weight || 1.0,
       completion || 0,
       notes || null
     );
@@ -1038,17 +1038,17 @@ app.put("/api/milestones/:id", (req, res) => {
       projectId,
       title,
       description,
-      type,
       dueDate,
       status,
+      weight,
       completion,
       notes,
     } = req.body;
 
     const stmt = db.prepare(`
       UPDATE milestones SET
-        projectId = ?, title = ?, description = ?, type = ?, dueDate = ?,
-        status = ?, completion = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
+        projectId = ?, title = ?, description = ?, dueDate = ?,
+        status = ?, weight = ?, completion = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
@@ -1056,9 +1056,9 @@ app.put("/api/milestones/:id", (req, res) => {
       projectId,
       title,
       description || null,
-      type,
       dueDate,
       status,
+      weight || 1.0,
       completion || 0,
       notes || null,
       req.params.id

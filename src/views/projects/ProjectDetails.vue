@@ -766,12 +766,6 @@
                     scope="col"
                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
-                    类型
-                  </th>
-                  <th
-                    scope="col"
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
-                  >
                     到期日期
                   </th>
                   <th
@@ -779,6 +773,12 @@
                     class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
                     完成度
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                  >
+                    权重占比
                   </th>
                   <th
                     scope="col"
@@ -810,14 +810,6 @@
                       {{ milestone.title }}
                     </router-link>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <span
-                      class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                      :class="getMilestoneTypeClass(milestone.type)"
-                    >
-                      {{ milestone.type }}
-                    </span>
-                  </td>
                   <td
                     class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
                   >
@@ -835,6 +827,9 @@
                     <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {{ milestone.completion || 0 }}%
                     </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ calculateWeightPercentage(milestone) }}%
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span
@@ -921,27 +916,6 @@
 
             <div class="mb-4">
               <label
-                for="milestoneType"
-                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-              >
-                类型 <span class="text-red-500">*</span>
-              </label>
-              <select
-                id="milestoneType"
-                v-model="milestoneForm.type"
-                required
-                class="form-input"
-              >
-                <option value="" disabled>请选择里程碑类型</option>
-                <option value="年度评审">年度评审</option>
-                <option value="中期评审">中期评审</option>
-                <option value="结项评审">结项评审</option>
-                <option value="其他">其他</option>
-              </select>
-            </div>
-
-            <div class="mb-4">
-              <label
                 for="milestoneDueDate"
                 class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
@@ -993,6 +967,36 @@
                 class="form-input"
                 placeholder="请输入完成度百分比"
               />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label
+                  for="milestoneWeight"
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  权重
+                </label>
+                <input
+                  id="milestoneWeight"
+                  v-model.number="milestoneForm.weight"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  class="form-input"
+                  placeholder="请输入权重值"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  权重占比
+                </label>
+                <div class="form-input bg-gray-100 dark:bg-gray-700">
+                  {{ calculateWeightPercentage(milestoneForm) }}%
+                </div>
+              </div>
             </div>
 
             <div class="mb-4">
@@ -1167,10 +1171,11 @@ const project = computed(() => {
 const milestoneForm = reactive({
   title: "",
   description: "",
-  type: "",
+  type: "常规里程碑", // 设置默认类型
   dueDate: "",
   status: "",
   completion: 0,
+  weight: 0,  // 默认权重值设为0
   notes: "",
   projectId: computed(() => parseInt(id.value)),
 });
@@ -1278,6 +1283,29 @@ const calculateMilestoneProgress = () => {
   return Math.round(totalCompletion / milestones.value.length);
 };
 
+// Calculate weight percentage for a milestone
+const calculateWeightPercentage = (milestone) => {
+  // Special case: if there's only one milestone (or adding first milestone)
+  if (milestones.value.length <= 1 && !editingMilestone.value) {
+    return 100;
+  }
+
+  // Calculate total weight of all milestones
+  let totalWeight = milestones.value.reduce(
+    (sum, m) => sum + (m.weight || 0),
+    0
+  );
+  
+  // If editing, subtract the old weight and add the new weight
+  if (editingMilestone.value) {
+    totalWeight = totalWeight + (editingMilestone.value.weight || 0) - (milestone.weight || 0);
+  }   
+  if (totalWeight <= 0) return 0;
+  
+  const percentage = ((milestone.weight || 0) / totalWeight) * 100;
+  return Math.min(100, Math.round(percentage * 10) / 10); // Cap at 100% and round to 1 decimal
+};
+
 // Open add milestone modal
 const openAddMilestoneModal = () => {
   // Reset form
@@ -1295,18 +1323,16 @@ const openAddMilestoneModal = () => {
   showMilestoneModal.value = true;
 };
 
-// Edit milestone
-const editMilestone = (milestone) => {
-  // Fill form with milestone data
-  Object.assign(milestoneForm, {
-    title: milestone.title,
-    description: milestone.description || "",
-    type: milestone.type,
-    dueDate: milestone.dueDate,
-    status: milestone.status,
-    completion: milestone.completion || 0,
-    notes: milestone.notes || "",
-  });
+  // Edit milestone
+  const editMilestone = (milestone) => {
+    // Fill form with milestone data
+    milestoneForm.title = milestone.title;
+    milestoneForm.description = milestone.description || "";
+    milestoneForm.dueDate = milestone.dueDate;
+    milestoneForm.status = milestone.status;
+    milestoneForm.completion = milestone.completion || 0;
+    milestoneForm.weight = milestone.weight || 1.0;
+    milestoneForm.notes = milestone.notes || "";
 
   editingMilestone.value = milestone;
   showMilestoneModal.value = true;
