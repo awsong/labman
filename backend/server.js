@@ -954,7 +954,7 @@ app.post(
 app.get("/api/milestones", (req, res) => {
   try {
     const milestones = db
-      .prepare("SELECT * FROM milestones ORDER BY dueDate ASC")
+      .prepare("SELECT * FROM milestones ORDER BY dueDate DESC")
       .all();
     res.json(milestones);
   } catch (error) {
@@ -966,7 +966,7 @@ app.get("/api/projects/:projectId/milestones", (req, res) => {
   try {
     const milestones = db
       .prepare(
-        "SELECT * FROM milestones WHERE projectId = ? ORDER BY dueDate ASC"
+        "SELECT * FROM milestones WHERE projectId = ? ORDER BY dueDate DESC"
       )
       .all(req.params.projectId);
     res.json(milestones);
