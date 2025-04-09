@@ -829,7 +829,7 @@
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ calculateWeightPercentage(milestone) }}%
+                    {{ calculateWeightPercentageList(milestone) }}%
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <span
@@ -1175,7 +1175,7 @@ const milestoneForm = reactive({
   dueDate: "",
   status: "",
   completion: 0,
-  weight: 0,  // 默认权重值设为0
+  weight: 10,  // 默认权重值设为10
   notes: "",
   projectId: computed(() => parseInt(id.value)),
 });
@@ -1283,6 +1283,19 @@ const calculateMilestoneProgress = () => {
   return Math.round(totalCompletion / milestones.value.length);
 };
 
+// Calculate weight percentage for a milestone in milestoneList
+const calculateWeightPercentageList = (milestone) => {
+  // Calculate total weight of all milestones
+  let totalWeight = milestones.value.reduce(
+    (sum, m) => sum + (m.weight || 0),
+    0
+  );
+  
+  if (totalWeight <= 0) return 0;
+  
+  const percentage = ((milestone.weight || 0) / totalWeight) * 100;
+  return Math.min(100, Math.round(percentage * 10) / 10); // Cap at 100% and round to 1 decimal
+};
 // Calculate weight percentage for a milestone
 const calculateWeightPercentage = (milestone) => {
   // Special case: if there's only one milestone (or adding first milestone)
@@ -1299,6 +1312,8 @@ const calculateWeightPercentage = (milestone) => {
   // If editing, subtract the old weight and add the new weight
   if (editingMilestone.value) {
     totalWeight = totalWeight + (editingMilestone.value.weight || 0) - (milestone.weight || 0);
+  } else {
+    totalWeight = totalWeight + (milestone.weight || 0);
   }   
   if (totalWeight <= 0) return 0;
   
@@ -1316,6 +1331,7 @@ const openAddMilestoneModal = () => {
     dueDate: "",
     status: "",
     completion: 0,
+    weight: 10, // 重置权重为10
     notes: "",
   });
 
