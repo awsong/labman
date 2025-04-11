@@ -31,7 +31,9 @@
         </template>
 
         <el-table :data="tasks" style="width: 100%">
-          <el-table-column prop="name" label="任务名称" min-width="200" />
+          <el-table-column prop="name" label="任务名称" min-width="180" />
+          <el-table-column prop="type" label="类型" width="120" />
+          <el-table-column prop="status" label="状态" width="120" />
           <el-table-column label="时间范围" min-width="200">
             <template #default="{ row }">
               {{ formatDate(row.startDate) }} 至 {{ formatDate(row.endDate) }}
@@ -63,6 +65,26 @@
       <el-form ref="taskFormRef" :model="taskForm" :rules="taskRules" label-width="100px">
         <el-form-item label="任务名称" prop="name">
           <el-input v-model="taskForm.name" placeholder="请输入任务名称" />
+        </el-form-item>
+        <el-form-item label="任务类型" prop="type">
+          <el-select v-model="taskForm.type" placeholder="请选择任务类型" style="width: 100%">
+            <el-option label="软件" value="软件" />
+            <el-option label="硬件" value="硬件" />
+            <el-option label="论文" value="论文" />
+            <el-option label="专利" value="专利" />
+            <el-option label="软件著作权" value="软件著作权" />
+            <el-option label="标准" value="标准" />
+            <el-option label="技术报告" value="技术报告" />
+            <el-option label="应用规范" value="应用规范" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="任务状态" prop="status">
+          <el-input 
+            v-model="taskForm.status" 
+            placeholder="请输入任务状态" 
+            maxlength="20" 
+            show-word-limit
+          />
         </el-form-item>
         <el-form-item label="开始日期" prop="startDate">
           <el-date-picker
@@ -183,6 +205,8 @@ const taskForm = ref({
   startDate: '',
   endDate: '',
   assignee: '',
+  type: '',
+  status: '',
   notes: '',
   documents: []
 })
@@ -191,7 +215,9 @@ const taskRules = {
   name: [{ required: true, message: '请输入任务名称', trigger: 'blur' }],
   startDate: [{ required: true, message: '请选择开始日期', trigger: 'change' }],
   endDate: [{ required: true, message: '请选择结束日期', trigger: 'change' }],
-  assignee: [{ required: true, message: '请选择负责人', trigger: 'change' }]
+  assignee: [{ required: true, message: '请选择负责人', trigger: 'change' }],
+  type: [{ required: true, message: '请选择任务类型', trigger: 'change' }],
+  status: [{ required: true, message: '请输入任务状态', trigger: 'blur' }]
 }
 
 // 获取里程碑信息
@@ -235,6 +261,8 @@ const openTaskDialog = (task = null) => {
       startDate: '',
       endDate: '',
       assignee: '',
+      type: '',
+      status: '',
       notes: '',
       documents: []
     }

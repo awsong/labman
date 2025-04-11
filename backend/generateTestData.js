@@ -240,6 +240,24 @@ const skills = [
   "网络安全",
 ];
 
+// 任务类型列表
+const taskTypes = [
+  "软件",
+  "硬件",
+  "论文",
+  "专利",
+  "软件著作权",
+  "标准",
+  "技术报告",
+  "应用规范",
+];
+
+// 任务状态列表
+const taskStatuses = ["未开始", "进行中", "已完成", "已延期", "待评审"];
+
+// 里程碑名称列表
+const milestoneNames = ["立项完成", "中期报告", "年度报告", "项目答辩", "结项"];
+
 // 生成随机中文姓名
 const generateChineseName = () => {
   const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
@@ -483,14 +501,60 @@ export function generateTestData() {
             Math.floor(((j + 1) * durationMonths) / (milestoneCount + 1))
         );
 
-        insertMilestone.run(
+        // 从里程碑名称列表中选择一个名称
+        const milestoneName = milestoneNames[j % milestoneNames.length];
+        const milestoneStatus = ["未开始", "进行中", "已完成"][
+          Math.floor(Math.random() * 3)
+        ];
+        const completion =
+          milestoneStatus === "已完成" ? 100 : Math.floor(Math.random() * 100);
+
+        const milestoneResult = insertMilestone.run(
           projectId,
-          `里程碑 ${j + 1}`,
-          `这是项目的第 ${j + 1} 个里程碑，包含相关研究内容和技术突破。`,
+          milestoneName,
+          `这是项目的${milestoneName}阶段，需要完成相关研究内容和文档提交。`,
           milestoneDate.toISOString().split("T")[0],
-          "进行中",
-          Math.floor(Math.random() * 100)
+          milestoneStatus,
+          completion
         );
+
+        // 为每个里程碑添加2-4个任务
+        const taskCount = 2 + Math.floor(Math.random() * 3);
+        const insertTask = db.prepare(`
+          INSERT INTO tasks (
+            milestoneId, name, startDate, endDate, assignee,
+            type, status, notes, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+
+        for (let k = 0; k < taskCount; k++) {
+          // 计算任务的起止时间
+          const taskStartDate = new Date(milestoneDate);
+          taskStartDate.setDate(taskStartDate.getDate() - 30);
+          const taskEndDate = new Date(milestoneDate);
+          taskEndDate.setDate(taskEndDate.getDate() - 5);
+
+          // 随机选择任务类型和状态
+          const taskType =
+            taskTypes[Math.floor(Math.random() * taskTypes.length)];
+          const taskStatus =
+            taskStatuses[Math.floor(Math.random() * taskStatuses.length)];
+
+          // 从参与人员中随机选择一个作为任务负责人
+          const taskAssignee =
+            participants[Math.floor(Math.random() * participants.length)];
+
+          insertTask.run(
+            milestoneResult.lastInsertRowid, // 使用正确的里程碑ID
+            `${taskType}任务${k + 1}`,
+            taskStartDate.toISOString().split("T")[0],
+            taskEndDate.toISOString().split("T")[0],
+            taskAssignee,
+            taskType,
+            taskStatus,
+            `这是${milestoneName}阶段的${taskType}相关任务。`
+          );
+        }
       }
 
       // 为每个项目插入3个进度记录

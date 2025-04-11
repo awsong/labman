@@ -199,6 +199,8 @@ function initializeDatabase() {
         startDate TEXT NOT NULL,
         endDate TEXT NOT NULL,
         assignee TEXT NOT NULL,
+        type TEXT CHECK(type IN ('软件', '硬件', '论文', '专利', '软件著作权', '标准', '技术报告', '应用规范')),
+        status TEXT CHECK(length(status) <= 20),
         notes TEXT,
         document TEXT,
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -1774,14 +1776,32 @@ app.get("/api/milestones/:milestoneId/tasks", (req, res) => {
 // Create a new task
 app.post("/api/tasks", (req, res) => {
   try {
-    const { milestoneId, name, startDate, endDate, assignee, notes } = req.body;
+    const {
+      milestoneId,
+      name,
+      startDate,
+      endDate,
+      assignee,
+      type,
+      status,
+      notes,
+    } = req.body;
 
     const result = db
       .prepare(
-        `INSERT INTO tasks (milestoneId, name, startDate, endDate, assignee, notes) 
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO tasks (milestoneId, name, startDate, endDate, assignee, type, status, notes) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(milestoneId, name, startDate, endDate, assignee, notes || null);
+      .run(
+        milestoneId,
+        name,
+        startDate,
+        endDate,
+        assignee,
+        type,
+        status,
+        notes || null
+      );
 
     const task = db
       .prepare("SELECT * FROM tasks WHERE id = ?")
@@ -1797,12 +1817,21 @@ app.post("/api/tasks", (req, res) => {
 // Update a task
 app.put("/api/tasks/:id", (req, res) => {
   try {
-    const { milestoneId, name, startDate, endDate, assignee, notes } = req.body;
+    const {
+      milestoneId,
+      name,
+      startDate,
+      endDate,
+      assignee,
+      type,
+      status,
+      notes,
+    } = req.body;
 
     db.prepare(
       `UPDATE tasks 
        SET milestoneId = ?, name = ?, startDate = ?, endDate = ?, 
-           assignee = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
+           assignee = ?, type = ?, status = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
        WHERE id = ?`
     ).run(
       milestoneId,
@@ -1810,6 +1839,8 @@ app.put("/api/tasks/:id", (req, res) => {
       startDate,
       endDate,
       assignee,
+      type,
+      status,
       notes || null,
       req.params.id
     );
