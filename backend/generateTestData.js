@@ -335,8 +335,8 @@ export function generateTestData() {
 
     const insertMilestone = db.prepare(`
       INSERT INTO milestones (
-        projectId, title, description, type, dueDate, status, completion
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        projectId, title, description, dueDate, status, completion
+      ) VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     const insertProgress = db.prepare(`
@@ -474,22 +474,21 @@ export function generateTestData() {
         );
       }
 
-      // 为每个项目插入3-5个里程碑
+      // 为每个项目添加3-5个里程碑
       const milestoneCount = 3 + Math.floor(Math.random() * 3);
       for (let j = 0; j < milestoneCount; j++) {
         const milestoneDate = new Date(startDate);
         milestoneDate.setMonth(
           milestoneDate.getMonth() +
-            Math.floor((durationMonths * (j + 1)) / (milestoneCount + 1))
+            Math.floor(((j + 1) * durationMonths) / (milestoneCount + 1))
         );
 
         insertMilestone.run(
           projectId,
-          `${prefix}${j + 1}阶段性目标`,
-          `完成${prefix}相关的第${j + 1}阶段研究内容`,
-          ["关键", "普通"][Math.floor(Math.random() * 2)],
+          `里程碑 ${j + 1}`,
+          `这是项目的第 ${j + 1} 个里程碑，包含相关研究内容和技术突破。`,
           milestoneDate.toISOString().split("T")[0],
-          ["未开始", "进行中", "已完成"][Math.floor(Math.random() * 3)],
+          "进行中",
           Math.floor(Math.random() * 100)
         );
       }
@@ -526,15 +525,17 @@ export function generateTestData() {
 
 // 辅助函数：随机打乱数组
 function shuffle(array) {
-  let currentIndex = array.length,
-    randomIndex;
-  while (currentIndex != 0) {
-    randomIndex = Math.floor(Math.random() * currentIndex);
-    currentIndex--;
-    [array[currentIndex], array[randomIndex]] = [
-      array[randomIndex],
-      array[currentIndex],
-    ];
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
+}
+
+// 如果直接运行此文件，则执行数据生成
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  console.log("开始生成测试数据...");
+  generateTestData();
+  console.log("测试数据生成完成！");
+  process.exit(0);
 }

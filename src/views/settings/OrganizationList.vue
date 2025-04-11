@@ -10,9 +10,9 @@
     <el-table :data="organizations" v-loading="loading" border>
       <el-table-column prop="name" label="单位名称" />
       <el-table-column prop="type" label="单位类型" />
-      <el-table-column prop="createdAt" label="创建时间">
+      <el-table-column prop="created_at" label="创建时间" width="180">
         <template #default="{ row }">
-          {{ formatDate(row.createdAt) }}
+          {{ formatDateTime(row.created_at) }}
         </template>
       </el-table-column>
       <el-table-column label="操作" width="200">
@@ -68,7 +68,7 @@ import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
 import api from "@/utils/api";
-import { formatDate } from "@/utils/date";
+import { formatDate, formatDateTime } from "@/utils/format";
 
 const loading = ref(false);
 const organizations = ref([]);
@@ -154,6 +154,10 @@ const handleSubmit = async () => {
       }
     }
   });
+};
+
+const formatOrgDate = (row) => {
+  return formatDateTime(row.created_at);
 };
 
 onMounted(() => {

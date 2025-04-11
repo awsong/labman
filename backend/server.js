@@ -21,6 +21,20 @@ if (!fs.existsSync(uploadsDir)) {
 const dbPath = path.join(__dirname, "labman.db");
 const db = new betterSqlite3(dbPath);
 
+// Create tables if they don't exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    taskId INTEGER,
+    path TEXT NOT NULL,
+    originalName TEXT NOT NULL,
+    displayName TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    uploadTime DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (taskId) REFERENCES tasks(id) ON DELETE CASCADE
+  )
+`);
+
 // Configure file storage for uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -29,11 +43,40 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+    // 使用 Buffer 来正确处理中文文件名
+    const originalName = Buffer.from(file.originalname, "latin1").toString(
+      "utf8"
+    );
+    // 生成一个唯一的文件名，但保留原始文件名信息
+    cb(null, `${uniqueSuffix}${ext}`);
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  fileFilter: function (req, file, cb) {
+    // 允许的文件类型
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "text/plain",
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("不支持的文件类型"));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 限制 10MB
+  },
+});
 
 // Initialize Express app
 const app = express();
@@ -144,6 +187,23 @@ function initializeDatabase() {
         createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
         updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (projectId) REFERENCES projects (id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create tasks table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        milestoneId INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        startDate TEXT NOT NULL,
+        endDate TEXT NOT NULL,
+        assignee TEXT NOT NULL,
+        notes TEXT,
+        document TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (milestoneId) REFERENCES milestones (id) ON DELETE CASCADE
       )
     `);
 
@@ -1666,6 +1726,413 @@ app.delete("/api/users/:id", (req, res) => {
   } catch (error) {
     console.error("删除用户失败:", error);
     res.status(500).json({ error: "删除用户失败" });
+  }
+});
+
+// Tasks API
+// Get tasks for a milestone
+app.get("/api/milestones/:milestoneId/tasks", (req, res) => {
+  try {
+    const tasks = db
+      .prepare(
+        `
+        SELECT t.*, 
+               json_group_array(
+                 json_object(
+                   'id', d.id,
+                   'path', d.path,
+                   'originalName', d.originalName,
+                   'displayName', d.displayName,
+                   'size', d.size,
+                   'uploadTime', d.uploadTime
+                 )
+               ) as documents
+        FROM tasks t
+        LEFT JOIN documents d ON t.id = d.taskId
+        WHERE t.milestoneId = ?
+        GROUP BY t.id
+        ORDER BY t.startDate
+      `
+      )
+      .all(req.params.milestoneId);
+
+    // Parse documents JSON string for each task
+    tasks.forEach((task) => {
+      task.documents = JSON.parse(task.documents);
+      if (task.documents[0].id === null) {
+        task.documents = [];
+      }
+    });
+
+    res.json(tasks);
+  } catch (error) {
+    console.error("获取任务列表失败:", error);
+    res.status(500).json({ error: "获取任务列表失败" });
+  }
+});
+
+// Create a new task
+app.post("/api/tasks", (req, res) => {
+  try {
+    const { milestoneId, name, startDate, endDate, assignee, notes } = req.body;
+
+    const result = db
+      .prepare(
+        `INSERT INTO tasks (milestoneId, name, startDate, endDate, assignee, notes) 
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(milestoneId, name, startDate, endDate, assignee, notes || null);
+
+    const task = db
+      .prepare("SELECT * FROM tasks WHERE id = ?")
+      .get(result.lastInsertRowid);
+
+    res.status(201).json(task);
+  } catch (error) {
+    console.error("创建任务失败:", error);
+    res.status(500).json({ error: "创建任务失败" });
+  }
+});
+
+// Update a task
+app.put("/api/tasks/:id", (req, res) => {
+  try {
+    const { milestoneId, name, startDate, endDate, assignee, notes } = req.body;
+
+    db.prepare(
+      `UPDATE tasks 
+       SET milestoneId = ?, name = ?, startDate = ?, endDate = ?, 
+           assignee = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).run(
+      milestoneId,
+      name,
+      startDate,
+      endDate,
+      assignee,
+      notes || null,
+      req.params.id
+    );
+
+    const task = db
+      .prepare("SELECT * FROM tasks WHERE id = ?")
+      .get(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    res.json(task);
+  } catch (error) {
+    console.error("更新任务失败:", error);
+    res.status(500).json({ error: "更新任务失败" });
+  }
+});
+
+// Delete a task
+app.delete("/api/tasks/:id", (req, res) => {
+  try {
+    const task = db
+      .prepare("SELECT * FROM tasks WHERE id = ?")
+      .get(req.params.id);
+
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    db.prepare("DELETE FROM tasks WHERE id = ?").run(req.params.id);
+
+    // If task has a document, delete it
+    if (task.document) {
+      const documentPath = path.join(__dirname, "..", task.document);
+      if (fs.existsSync(documentPath)) {
+        fs.unlinkSync(documentPath);
+      }
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("删除任务失败:", error);
+    res.status(500).json({ error: "删除任务失败" });
+  }
+});
+
+// Upload task document
+app.post("/api/tasks/:id/document", upload.single("document"), (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Update task with document path
+    const documentPath = `/uploads/${file.filename}`;
+
+    // 检查任务是否存在
+    const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+    if (!task) {
+      // 如果文件已上传，删除它
+      if (fs.existsSync(path.join(__dirname, file.path))) {
+        fs.unlinkSync(path.join(__dirname, file.path));
+      }
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // 如果任务已有文档，删除旧文档
+    if (task.document) {
+      const oldDocPath = path.join(__dirname, "..", task.document);
+      if (fs.existsSync(oldDocPath)) {
+        fs.unlinkSync(oldDocPath);
+      }
+    }
+
+    db.prepare(
+      "UPDATE tasks SET document = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?"
+    ).run(documentPath, taskId);
+
+    const updatedTask = db
+      .prepare("SELECT * FROM tasks WHERE id = ?")
+      .get(taskId);
+
+    res.json({
+      message: "File uploaded successfully",
+      document: documentPath,
+      task: updatedTask,
+    });
+  } catch (error) {
+    console.error("上传文档失败:", error);
+    res.status(500).json({ error: error.message || "上传文档失败" });
+  }
+});
+
+// Get project participants
+app.get("/api/projects/:projectId/participants", (req, res) => {
+  try {
+    const projectOrgs = db
+      .prepare(
+        `SELECT po.*, o.name as organizationName
+         FROM project_organizations po
+         JOIN organizations o ON po.organizationId = o.id
+         WHERE po.projectId = ?`
+      )
+      .all(req.params.projectId);
+
+    const participants = [];
+    for (const org of projectOrgs) {
+      // Add leader and contact
+      if (org.leader) {
+        participants.push({
+          name: org.leader,
+          role: "负责人",
+          organization: org.organizationName,
+        });
+      }
+
+      // Add other participants
+      if (org.participants) {
+        const orgParticipants = JSON.parse(org.participants);
+        for (const participant of orgParticipants) {
+          participants.push({
+            name: participant,
+            role: "参与人",
+            organization: org.organizationName,
+          });
+        }
+      }
+    }
+
+    res.json(participants);
+  } catch (error) {
+    console.error("获取项目参与人失败:", error);
+    res.status(500).json({ error: "获取项目参与人失败" });
+  }
+});
+
+// Upload temporary document (before task creation)
+app.post("/api/tasks/temp-documents", upload.single("document"), (req, res) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const documentPath = `/uploads/${file.filename}`;
+    // 正确处理中文文件名
+    const originalName = Buffer.from(file.originalname, "latin1").toString(
+      "utf8"
+    );
+
+    // Save document without taskId (temporary document)
+    const result = db
+      .prepare(
+        `
+      INSERT INTO documents (path, originalName, displayName, size)
+      VALUES (?, ?, ?, ?)
+    `
+      )
+      .run(documentPath, originalName, originalName, file.size);
+
+    res.json({
+      message: "File uploaded successfully",
+      documentId: result.lastInsertRowid,
+      path: documentPath,
+      originalName: originalName,
+      displayName: originalName,
+    });
+  } catch (error) {
+    console.error("上传临时文档失败:", error);
+    res.status(500).json({ error: error.message || "上传文档失败" });
+  }
+});
+
+// Associate temporary documents with task
+app.post("/api/tasks/:id/associate-documents", (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const { documentIds } = req.body;
+
+    if (!Array.isArray(documentIds)) {
+      return res.status(400).json({ error: "Invalid document IDs" });
+    }
+
+    // Update documents with taskId
+    const stmt = db.prepare("UPDATE documents SET taskId = ? WHERE id = ?");
+    for (const docId of documentIds) {
+      stmt.run(taskId, docId);
+    }
+
+    res.json({ message: "Documents associated successfully" });
+  } catch (error) {
+    console.error("关联文档失败:", error);
+    res.status(500).json({ error: error.message || "关联文档失败" });
+  }
+});
+
+// Upload document for existing task
+app.post("/api/tasks/:id/documents", upload.single("document"), (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Check if task exists
+    const task = db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId);
+    if (!task) {
+      // Delete uploaded file if task doesn't exist
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    const documentPath = `/uploads/${file.filename}`;
+    // 正确处理中文文件名
+    const originalName = Buffer.from(file.originalname, "latin1").toString(
+      "utf8"
+    );
+
+    // Save document with taskId
+    const result = db
+      .prepare(
+        `
+      INSERT INTO documents (taskId, path, originalName, displayName, size)
+      VALUES (?, ?, ?, ?, ?)
+    `
+      )
+      .run(taskId, documentPath, originalName, originalName, file.size);
+
+    res.json({
+      message: "File uploaded successfully",
+      documentId: result.lastInsertRowid,
+      path: documentPath,
+      originalName: originalName,
+      displayName: originalName,
+    });
+  } catch (error) {
+    console.error("上传文档失败:", error);
+    res.status(500).json({ error: error.message || "上传文档失败" });
+  }
+});
+
+// Update document name
+app.put("/api/tasks/:taskId/documents/:docId", (req, res) => {
+  try {
+    const { taskId, docId } = req.params;
+    const { displayName } = req.body;
+
+    if (!displayName) {
+      return res.status(400).json({ error: "Display name is required" });
+    }
+
+    // Ensure proper encoding of the display name
+    const encodedDisplayName = Buffer.from(displayName).toString("utf8");
+
+    db.prepare(
+      `
+      UPDATE documents 
+      SET displayName = ? 
+      WHERE id = ? AND taskId = ?
+    `
+    ).run(encodedDisplayName, docId, taskId);
+
+    const document = db
+      .prepare("SELECT * FROM documents WHERE id = ?")
+      .get(docId);
+
+    if (!document) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    // Ensure the response also uses proper encoding
+    const response = {
+      ...document,
+      displayName: Buffer.from(document.displayName, "utf8").toString("utf8"),
+      originalName: Buffer.from(document.originalName, "utf8").toString("utf8"),
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error("更新文档名称失败:", error);
+    res.status(500).json({ error: error.message || "更新文档名称失败" });
+  }
+});
+
+// Delete document
+app.delete("/api/tasks/:taskId/documents/:docId", (req, res) => {
+  try {
+    const { taskId, docId } = req.params;
+
+    // Get document info before deletion
+    const document = db
+      .prepare("SELECT * FROM documents WHERE id = ? AND taskId = ?")
+      .get(docId, taskId);
+
+    if (!document) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    // Delete file from filesystem
+    const filePath = path.join(__dirname, "..", document.path);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Delete document record from database
+    db.prepare("DELETE FROM documents WHERE id = ? AND taskId = ?").run(
+      docId,
+      taskId
+    );
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("删除文档失败:", error);
+    res.status(500).json({ error: error.message || "删除文档失败" });
   }
 });
 

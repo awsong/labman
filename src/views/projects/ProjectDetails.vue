@@ -446,8 +446,8 @@
                         class="text-lg font-semibold text-orange-600 dark:text-orange-400"
                         >{{ getTotalOutcome("demonstrations") }}</span
                       >
-                    </div>
-                  </div>
+                </div>
+              </div>
                 </div>
               </div>
             </div>
@@ -544,22 +544,22 @@
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         <div class="flex items-center">
                           <span>{{ getOrgName(org.organizationId) }}</span>
-                          <span v-if="org.isLeader" class="ml-2 text-xs text-primary-600 dark:text-primary-400">(牵头单位)</span>
+                      <span v-if="org.isLeader" class="ml-2 text-xs text-primary-600 dark:text-primary-400">(牵头单位)</span>
                         </div>
-                      </td>
+                    </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {{ org.leader }}
-                      </td>
+                      {{ org.leader }}
+                    </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {{ org.contact }}
-                      </td>
+                    </td>
                       <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
                         {{ org.participants?.join(", ") || "-" }}
-                      </td>
+                    </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {{ (parseFloat(org.selfFunding) + parseFloat(org.allocation)).toFixed(2) }}
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                     <!-- 展开的详情面板 -->
                     <tr v-if="expandedOrgId === org.organizationId">
                       <td colspan="5" class="px-6 py-4 bg-gray-100/95 dark:bg-gray-800/95 border-t border-b border-gray-200 dark:border-gray-700 shadow-inner text-sm">
@@ -701,8 +701,8 @@
                             </div>
                           </div>
                         </div>
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                   </template>
                 </tbody>
               </table>
@@ -1100,6 +1100,8 @@ import {
 } from "@heroicons/vue/24/outline";
 import { useProjectStore } from "@/store/project";
 import { useMilestoneStore } from "@/store/milestone";
+import { formatDate, formatDateTime, formatMoney } from '@/utils/format'
+import api from '@/utils/api'
 
 const route = useRoute();
 const router = useRouter();
@@ -1135,7 +1137,7 @@ const tabs = [
 const project = computed(() => {
   const currentProject = projectStore.currentProject;
   console.log("Computing project value:", currentProject);
-
+  
   if (!currentProject) {
     console.warn("No current project data available");
     return {};
@@ -1146,9 +1148,9 @@ const project = computed(() => {
     try {
       currentProject.organizations =
         typeof currentProject.organizations === "string"
-          ? JSON.parse(currentProject.organizations)
-          : currentProject.organizations;
-
+        ? JSON.parse(currentProject.organizations)
+        : currentProject.organizations;
+        
       if (!Array.isArray(currentProject.organizations)) {
         console.error(
           "Project organizations is not an array:",
@@ -1179,12 +1181,6 @@ const milestoneForm = reactive({
   notes: "",
   projectId: computed(() => parseInt(id.value)),
 });
-
-// Format date to YYYY-MM-DD
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("zh-CN");
-};
 
 // Format number with thousand separators
 const formatNumber = (num) => {
@@ -1339,9 +1335,9 @@ const openAddMilestoneModal = () => {
   showMilestoneModal.value = true;
 };
 
-  // Edit milestone
-  const editMilestone = (milestone) => {
-    // Fill form with milestone data
+// Edit milestone
+const editMilestone = (milestone) => {
+  // Fill form with milestone data
     milestoneForm.title = milestone.title;
     milestoneForm.description = milestone.description || "";
     milestoneForm.dueDate = milestone.dueDate;
@@ -1434,20 +1430,20 @@ const handleUploadClick = () => {
 const handleFileChange = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
-
+  
   try {
     const formData = new FormData();
     formData.append("taskDocument", file);
-
+    
     // Show uploading status
     projectStore.loading = true;
-
+    
     // Upload file
     await projectStore.uploadTaskDocument(id.value, formData);
-
+    
     // Reset file input
     event.target.value = "";
-
+    
     // Success message
     alert("任务书上传成功！");
   } catch (error) {
@@ -1490,7 +1486,7 @@ const getOrgName = (orgId) => {
   const org = organizations.value.find(
     (org) => Number(org.id) === numericOrgId
   );
-
+  
   if (!org) {
     console.warn(`getOrgName: Organization not found for ID: ${orgId}`);
     return "未知单位";
@@ -1502,17 +1498,17 @@ const getOrgName = (orgId) => {
 const getExpectedOutcome = (org, type) => {
   try {
     let outcomes = org.expectedOutcomes;
-
+    
     // 如果是字符串，尝试解析 JSON
     if (typeof outcomes === "string") {
       outcomes = JSON.parse(outcomes);
     }
-
+    
     if (typeof outcomes !== "object" || outcomes === null) {
       console.error("Invalid expectedOutcomes format:", outcomes);
       return 0;
     }
-
+    
     return Number(outcomes[type]) || 0;
   } catch (error) {
     console.error("Error parsing expected outcomes:", error);
@@ -1523,17 +1519,17 @@ const getExpectedOutcome = (org, type) => {
 const getParticipants = (org) => {
   try {
     let participants = org.participants;
-
+    
     // 如果是字符串，尝试解析 JSON
     if (typeof participants === "string") {
       participants = JSON.parse(participants);
     }
-
+    
     if (!Array.isArray(participants)) {
       console.error("Invalid participants format:", participants);
       return [];
     }
-
+    
     return participants;
   } catch (error) {
     console.error("Error parsing participants:", error);
@@ -1545,18 +1541,18 @@ const getTotalOutcome = (type) => {
   try {
     const organizations = project.value?.organizations;
     if (!organizations) return 0;
-
+    
     // 如果是字符串，尝试解析 JSON
     let orgs = organizations;
     if (typeof organizations === "string") {
       orgs = JSON.parse(organizations);
     }
-
+    
     if (!Array.isArray(orgs)) {
       console.error("Invalid organizations format:", orgs);
       return 0;
     }
-
+    
     return orgs.reduce((sum, org) => {
       return sum + getExpectedOutcome(org, type);
     }, 0);
@@ -1616,7 +1612,7 @@ const parseExpectedOutcomes = (outcomes) => {
     if (typeof outcomes === "string") {
       outcomes = JSON.parse(outcomes);
     }
-
+    
     if (typeof outcomes !== "object" || outcomes === null) {
       console.warn("Invalid expected outcomes format:", outcomes);
       return {
@@ -1630,7 +1626,7 @@ const parseExpectedOutcomes = (outcomes) => {
         demonstrations: 0,
       };
     }
-
+    
     return outcomes;
   } catch (error) {
     console.error("Error parsing expected outcomes:", error);
@@ -1678,11 +1674,11 @@ onMounted(async () => {
       }
       const data = await response.json();
       console.log("Loaded organizations:", data);
-
+      
       if (!Array.isArray(data)) {
         throw new Error("Organizations data is not an array");
       }
-
+      
       organizations.value = data;
     } catch (err) {
       console.error("Error fetching organizations:", err);
@@ -1742,6 +1738,14 @@ const handleClickOutside = (event) => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
+
+const formatProjectDate = (row) => {
+  return formatDateTime(row.created_at)
+}
+
+const formatProjectBudget = (row) => {
+  return formatMoney(row.budget)
+}
 </script>
 
 <style scoped>

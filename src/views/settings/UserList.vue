@@ -16,6 +16,11 @@
       <el-table-column prop="education" label="学历" />
       <el-table-column prop="major" label="专业" />
       <el-table-column prop="researchArea" label="研究方向" />
+      <el-table-column prop="created_at" label="创建时间" width="180">
+        <template #default="{ row }">
+          {{ formatDateTime(row.created_at) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="200">
         <template #default="{ row }">
           <el-button-group>
@@ -109,6 +114,7 @@ import { ref, onMounted } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { Plus, Edit, Delete } from "@element-plus/icons-vue";
 import api from "@/utils/api";
+import { formatDate, formatDateTime } from '@/utils/format'
 
 const loading = ref(false);
 const users = ref([]);
@@ -242,6 +248,10 @@ const handleSubmit = async () => {
     }
   });
 };
+
+const formatUserDate = (row) => {
+  return formatDateTime(row.created_at)
+}
 
 onMounted(() => {
   fetchUsers();
