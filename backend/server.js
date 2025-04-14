@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import fs from "fs";
 import betterSqlite3 from "better-sqlite3";
 import { generateTestData } from "./generateTestData.js";
+import statisticsRoutes from "./routes/statistics.js";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -87,6 +88,7 @@ const HOST = process.env.HOST || "localhost";
 app.use(cors());
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/api/statistics", statisticsRoutes);
 
 // Database initialization
 function initializeDatabase() {

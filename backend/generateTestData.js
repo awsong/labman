@@ -1,14 +1,10 @@
-import betterSqlite3 from "better-sqlite3";
+import db from "./db/connection.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Initialize database
-const dbPath = path.join(__dirname, "labman.db");
-const db = new betterSqlite3(dbPath);
 
 // 项目类型列表
 const projectTypes = [
@@ -364,13 +360,13 @@ export function generateTestData() {
     `);
 
     for (let i = 1; i <= 200; i++) {
-      // 生成2020-2025年间的随机日期
-      const startYear = 2020 + Math.floor(Math.random() * 3);
+      // 生成2024-2026年间的随机日期
+      const startYear = 2024 + Math.floor(Math.random() * 2); // 2024-2025
       const startMonth = 1 + Math.floor(Math.random() * 12);
       const startDate = new Date(startYear, startMonth - 1, 1);
 
-      // 项目持续时间：1-3年
-      const durationMonths = 12 + Math.floor(Math.random() * 24);
+      // 项目持续时间：6-24个月
+      const durationMonths = 6 + Math.floor(Math.random() * 19);
       const endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + durationMonths);
 
@@ -380,7 +376,7 @@ export function generateTestData() {
       const type =
         projectTypes[Math.floor(Math.random() * projectTypes.length)];
 
-      // 从牵头单位的用户中选择负责人和联系人
+      // 从牵头单位的用户中选择负责人
       const leadOrgUsers = users.filter(
         (user) => user.organizationId === leadOrg.id
       );
@@ -394,11 +390,21 @@ export function generateTestData() {
         projectSuffixes[Math.floor(Math.random() * projectSuffixes.length)];
       const projectName = `${prefix}${suffix}`;
 
+      // 随机项目状态
+      const projectStatus =
+        Math.random() < 0.6
+          ? "进行中"
+          : Math.random() < 0.8
+          ? "已完成"
+          : Math.random() < 0.9
+          ? "已延期"
+          : "未开始";
+
       // 插入项目
       const result = insertProject.run(
         projectName,
         type,
-        "进行中",
+        projectStatus,
         startDate.toISOString().split("T")[0],
         endDate.toISOString().split("T")[0],
         null,
@@ -503,11 +509,29 @@ export function generateTestData() {
 
         // 从里程碑名称列表中选择一个名称
         const milestoneName = milestoneNames[j % milestoneNames.length];
-        const milestoneStatus = ["未开始", "进行中", "已完成"][
-          Math.floor(Math.random() * 3)
-        ];
-        const completion =
-          milestoneStatus === "已完成" ? 100 : Math.floor(Math.random() * 100);
+
+        // 根据日期确定里程碑状态
+        const now = new Date();
+        let milestoneStatus;
+        let completion;
+
+        if (milestoneDate < now) {
+          milestoneStatus = Math.random() < 0.8 ? "已完成" : "已延期";
+          completion =
+            milestoneStatus === "已完成"
+              ? 100
+              : 70 + Math.floor(Math.random() * 20);
+        } else if (
+          milestoneDate.getTime() - now.getTime() >
+          30 * 24 * 60 * 60 * 1000
+        ) {
+          // 超过30天
+          milestoneStatus = "未开始";
+          completion = 0;
+        } else {
+          milestoneStatus = "进行中";
+          completion = 20 + Math.floor(Math.random() * 60);
+        }
 
         const milestoneResult = insertMilestone.run(
           projectId,
@@ -528,24 +552,37 @@ export function generateTestData() {
         `);
 
         for (let k = 0; k < taskCount; k++) {
-          // 计算任务的起止时间
-          const taskStartDate = new Date(milestoneDate);
-          taskStartDate.setDate(taskStartDate.getDate() - 30);
-          const taskEndDate = new Date(milestoneDate);
-          taskEndDate.setDate(taskEndDate.getDate() - 5);
+          // 计算任务的起止时间，确保在当前日期附近
+          const now = new Date();
+          const taskStartDate = new Date(now);
+          taskStartDate.setDate(
+            taskStartDate.getDate() - Math.floor(Math.random() * 60)
+          ); // 最近60天内开始
+          const taskEndDate = new Date(taskStartDate);
+          taskEndDate.setDate(
+            taskStartDate.getDate() + 15 + Math.floor(Math.random() * 45)
+          ); // 15-60天的持续时间
+
+          // 根据日期确定任务状态
+          let taskStatus;
+          if (taskEndDate < now) {
+            taskStatus = Math.random() < 0.8 ? "已完成" : "已延期";
+          } else if (taskStartDate > now) {
+            taskStatus = "未开始";
+          } else {
+            taskStatus = "进行中";
+          }
 
           // 随机选择任务类型和状态
           const taskType =
             taskTypes[Math.floor(Math.random() * taskTypes.length)];
-          const taskStatus =
-            taskStatuses[Math.floor(Math.random() * taskStatuses.length)];
 
           // 从参与人员中随机选择一个作为任务负责人
           const taskAssignee =
             participants[Math.floor(Math.random() * participants.length)];
 
           insertTask.run(
-            milestoneResult.lastInsertRowid, // 使用正确的里程碑ID
+            milestoneResult.lastInsertRowid,
             `${taskType}任务${k + 1}`,
             taskStartDate.toISOString().split("T")[0],
             taskEndDate.toISOString().split("T")[0],
