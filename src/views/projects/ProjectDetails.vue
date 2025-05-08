@@ -105,9 +105,7 @@
               经费预算
             </div>
             <div class="text-lg font-semibold text-gray-900 dark:text-white">
-              {{
-                project.budget ? `¥${formatNumber(project.budget)}` : "未设置"
-              }}
+              {{ projectBudgetTotal !== null ? `${projectBudgetTotal} 万元` : "未设置" }}
             </div>
           </div>
 
@@ -1167,6 +1165,19 @@ const project = computed(() => {
   }
 
   return currentProject;
+});
+
+// 新增：项目经费预算合计（万元，保留两位小数）
+const projectBudgetTotal = computed(() => {
+  const orgs = project.value?.organizations;
+  if (!orgs || !Array.isArray(orgs) || orgs.length === 0) return null;
+  let total = 0;
+  for (const org of orgs) {
+    const selfFunding = parseFloat(org.selfFunding) || 0;
+    const allocation = parseFloat(org.allocation) || 0;
+    total += selfFunding + allocation;
+  }
+  return total.toFixed(2);
 });
 
 // Milestone form
