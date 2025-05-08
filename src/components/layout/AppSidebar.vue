@@ -35,6 +35,8 @@
             <span class="truncate">项目列表</span>
           </router-link>
 
+          <!-- 隐藏里程碑管理菜单 -->
+          <!--
           <router-link
             to="/milestones"
             class="flex items-center rounded-lg px-2 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
@@ -46,7 +48,10 @@
             <flag-icon class="h-5 w-5 flex-shrink-0 mr-2" />
             <span class="truncate">里程碑管理</span>
           </router-link>
+          -->
 
+          <!-- 隐藏进度管理菜单 -->
+          <!--
           <router-link
             to="/progress"
             class="flex items-center rounded-lg px-2 py-2 text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
@@ -58,6 +63,7 @@
             <chart-bar-icon class="h-5 w-5 flex-shrink-0 mr-2" />
             <span class="truncate">进度管理</span>
           </router-link>
+          -->
         </div>
 
         <div class="pt-4">
