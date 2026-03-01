@@ -23,7 +23,7 @@
     "cors": "^2.8.5",
     "echarts": "^5.6.0",
     "element-plus": "^2.9.7",
-    "express": "^4.19.1",
+    "express": "^4.22.1",
     "multer": "^1.4.5-lts.1",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
